@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 3b456a741639b24408eacde057082442
+guid: e119a0dc54411554e8bb4d385e005a84
 TextureImporter:
   internalIDToNameTable:
   - first:
@@ -116,10 +116,10 @@ TextureImporter:
       name: outline_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 3
-        width: 160
-        height: 154
+        x: 2
+        y: 2
+        width: 166
+        height: 166
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}

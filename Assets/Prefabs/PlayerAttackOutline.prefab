@@ -47,8 +47,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   gridPosition: {x: 0, y: 0}
   type: 0
-  blocksLineOfSight: 0
-  movementCostModifier: 0
+  blockLOS: 0
 --- !u!212 &6346011216609935404
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -93,12 +92,12 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: -6724901840263831054, guid: 3b456a741639b24408eacde057082442, type: 3}
+  m_Sprite: {fileID: -6724901840263831054, guid: e119a0dc54411554e8bb4d385e005a84, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 0.79607844}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
-  m_Size: {x: 1.42, y: 1.38}
+  m_Size: {x: 1.66, y: 1.66}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1

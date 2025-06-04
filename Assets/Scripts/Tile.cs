@@ -7,7 +7,9 @@ public enum TileType
     Enemy,
     HealthPickup,
     Player,
-    Environment
+    Environment,
+    Goal,
+    Key
 }
 
 public abstract class Tile : MonoBehaviour

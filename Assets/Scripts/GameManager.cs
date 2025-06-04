@@ -6,13 +6,8 @@ using System.Collections;
 
 public class GameManager : MonoBehaviour
 {
-    #region Singleton & Core Unity Methods
-    // =====================================================================
-    // Singleton & Core Unity Methods
-    // =====================================================================
-
+    #region Unity Methods
     public static GameManager Instance { get; private set; }
-
     void Awake()
     {
         if (Instance == null) Instance = this;
@@ -23,6 +18,8 @@ public class GameManager : MonoBehaviour
     {
         GenerateLevel();
         if (messageText) messageText.text = "";
+        currentScore = 0;
+        UpdateScoreDisplay();
     }
 
     void Update()
@@ -43,15 +40,13 @@ public class GameManager : MonoBehaviour
 
     #endregion
 
-    #region Inspector Assigned Fields
-    // =====================================================================
-    // Inspector Assigned Fields
-    // =====================================================================
-
-    public int gridSize = 5;
+    #region Unity Fields
 
     [Header("Grid Settings")]
     public float tileSize = 1.0f;
+    public int minGridSize = 4;
+    public int maxGridSize = 7;
+    public int floorsPerSizeIncrease = 3;
 
     [Header("Random Level Settings")]
     public int numberOfEnemies = 3;
@@ -59,27 +54,48 @@ public class GameManager : MonoBehaviour
     public int numberOfHealthPickups = 1;
 
     [Header("Prefabs")]
+    public GameObject lizardTilePrefab;
+    public GameObject rhinoTilePrefab;
+    public GameObject deerTilePrefab;
+    public GameObject trollTilePrefab;
     public GameObject trapTilePrefab;
     public GameObject enemyTilePrefab;
     public GameObject rockTilePrefab;
-    public GameObject bushTilePrefab;
+    public GameObject boulderTilePrefab;
     public GameObject healthPickupPrefab;
     public GameObject playerPrefab;
     public GameObject playerTilePrefab;
     public GameObject emptyTilePrefab;
+    public GameObject goalTilePrefab;
+    public GameObject keyTilePrefab;
     public GameObject playerAttackOutlinePrefab;
 
-    [Header("Scene UI References (Assign from Scene)")]
-    public Text scenePlayerHealthText; 
+    [Header("Scene UI References")]
+    public Text scenePlayerHealthText;
     public Text messageText;
 
     [Header("Enemy Attack Highlighting")]
-    public Color attackHighlightColor = new Color(1f, 0.5f, 0.5f, 0.75f); 
-    public KeyCode showAllAttackAreasKey = KeyCode.LeftAlt; 
+    public Color attackHighlightColor = new Color(1f, 0.5f, 0.5f, 0.75f);
+    public KeyCode showAllAttackAreasKey = KeyCode.LeftAlt;
 
     [Header("Attack Highlighting")]
     public Color enemyHitFlashColor = Color.white;
     public float enemyHitFlashDuration = 0.15f;
+
+    [Header("Game Progression")]
+    public int currentFloor = 1;
+    public int targetFloorToWinGame = 3;
+    public Text floorDisplayUIText;
+    private bool hasKeyOnCurrentFloor = false;
+    private Vector2Int currentLevelGoalPosition;
+
+    [Header("Score System")]
+    public int scoreKillEnemy = 100;
+    public int scoreAdvanceLevel = 250;
+    public int scoreCollectKey = 250;
+    public int scorePenaltyPerTurn = 10;
+    private int currentScore = 0;
+    public Text scoreDisplayUIText;
 
     [Header("Player Attack Settings")]
     public Vector2Int playerAttackFacingDirection = Vector2Int.up;
@@ -94,39 +110,32 @@ public class GameManager : MonoBehaviour
 
     #endregion
 
-    #region Internal State Variables
-    // =====================================================================
-    // Internal State Variables
-    // =====================================================================
-
-    // Game Data
+    #region State Variables
     private Tile[,] grid;
     private GameObject[,] tileGameObjects;
-
+    private int currentDynamicGridSize;
     private Player playerController;
     private GameObject playerGameObject;
     private Vector2Int playerGridPos;
     private List<GameObject> currentPlayerAttackOutlineGOs = new List<GameObject>();
     private List<Tile> currentlyHighlightedEnemyAttackTiles = new List<Tile>();
-    private EnemyTile hoveredEnemy = null;
+    private BaseEnemyTile hoveredEnemy = null;
     private bool showAllHighlightsOverride = false;
-
     private Tile tileBeingDragged = null;
     private Vector2Int dragTileOriginalGridPos;
     private GameObject visualTileBeingDragged = null;
-    private Vector3 mouseOffsetFromTileCenter;        // relative grab point
+    private Vector3 mouseOffsetFromTileCenter;
     private int draggedTileOriginalSortingOrder;
     private SpriteRenderer draggedTileSpriteRenderer;
-
     private bool isGameOver = false;
     private int activeEnemiesCount = 0;
 
+    public bool IsAnimating() => swapAnimationActive;
+    public bool HasKey() => hasKeyOnCurrentFloor;
+
     #endregion
 
-    #region Queue & Input Handling 
-    // =====================================================================
-    // Input Handling & Queue
-    // =====================================================================
+    #region Input 
 
     void HandleKeyOverrides()
     {
@@ -142,18 +151,21 @@ public class GameManager : MonoBehaviour
         }
         else if (Input.GetKeyUp(showAllAttackAreasKey))
         {
-            if (showAllHighlightsOverride) 
+            if (showAllHighlightsOverride)
             {
                 showAllHighlightsOverride = false;
                 needsHighlightUpdate = true;
             }
         }
         // continuous update while Alt is held (in case enemies move/die while Alt is held):
-        else if (Input.GetKey(showAllAttackAreasKey) && !showAllHighlightsOverride) {
+        else if (Input.GetKey(showAllAttackAreasKey) && !showAllHighlightsOverride)
+        {
             // This case is if GetKeyDown was missed but key is held
             showAllHighlightsOverride = true;
             needsHighlightUpdate = true;
-        } else if (!Input.GetKey(showAllAttackAreasKey) && showAllHighlightsOverride) {
+        }
+        else if (!Input.GetKey(showAllAttackAreasKey) && showAllHighlightsOverride)
+        {
             // This case is if GetKeyUp was missed but key is no longer held
             showAllHighlightsOverride = false;
             needsHighlightUpdate = true;
@@ -187,13 +199,13 @@ public class GameManager : MonoBehaviour
         // Hover
         if (tileBeingDragged == null && !Input.GetMouseButton(0) && !swapAnimationActive)
         {
-            EnemyTile previouslyHovered = hoveredEnemy;
+            BaseEnemyTile previouslyHovered = hoveredEnemy;
             hoveredEnemy = null;
 
             if (InBounds(currentMouseGridPos))
             {
                 Tile tileUnderMouse = grid[currentMouseGridPos.x, currentMouseGridPos.y];
-                if (tileUnderMouse is EnemyTile enemy && !enemy.IsDefeated())
+                if (tileUnderMouse is BaseEnemyTile enemy && !enemy.IsDefeated())
                 {
                     hoveredEnemy = enemy;
                 }
@@ -223,9 +235,10 @@ public class GameManager : MonoBehaviour
                             if (draggedTileSpriteRenderer != null)
                             {
                                 draggedTileOriginalSortingOrder = draggedTileSpriteRenderer.sortingOrder;
-                                draggedTileSpriteRenderer.sortingOrder = 9999; 
+                                draggedTileSpriteRenderer.sortingOrder = 9999;
                             }
-                            if(hoveredEnemy != null) {
+                            if (hoveredEnemy != null)
+                            {
                                 hoveredEnemy = null;
                                 UpdateAllHighlightDisplays();
                             }
@@ -294,87 +307,180 @@ public class GameManager : MonoBehaviour
 
     #endregion
 
-    #region Level Generation & Tile Management
-    // =====================================================================
-    // Level Generation & Tile Management
-    // =====================================================================
+    #region Tile Management
 
     void GenerateLevel()
     {
-        grid = new Tile[gridSize, gridSize];
-        tileGameObjects = new GameObject[gridSize, gridSize];
-        activeEnemiesCount = 0;
+        currentDynamicGridSize = GetGridSizeForFloor(currentFloor);
+        if (Camera.main != null) Camera.main.orthographicSize = GetCameraOrthoSizeForGrid(currentDynamicGridSize);
 
-        for (int x = 0; x < gridSize; x++)
+        DestroyOldTilesAndClearArrays();
+
+        grid = new Tile[currentDynamicGridSize, currentDynamicGridSize];
+        tileGameObjects = new GameObject[currentDynamicGridSize, currentDynamicGridSize];
+        activeEnemiesCount = 0;
+        hasKeyOnCurrentFloor = false;
+        hoveredEnemy = null;
+        tileBeingDragged = null;
+        visualTileBeingDragged = null;
+
+        playerGridPos = new Vector2Int(0, 0);
+        currentLevelGoalPosition = new Vector2Int(currentDynamicGridSize - 1, currentDynamicGridSize - 1);
+
+        for (int x = 0; x < currentDynamicGridSize; x++)
         {
-            for (int y = 0; y < gridSize; y++)
+            for (int y = 0; y < currentDynamicGridSize; y++)
             {
-                switch ((x + y) % 3)
+                Vector2Int currentPos = new Vector2Int(x, y);
+                if (currentPos == playerGridPos || currentPos == currentLevelGoalPosition)
                 {
-                    case 0: SpawnTile(TileType.Environment, new Vector2Int(x, y), rockTilePrefab); break;
-                    case 1: SpawnTile(TileType.Environment, new Vector2Int(x, y), bushTilePrefab); break;
-                    case 2: SpawnTile(TileType.Empty, new Vector2Int(x, y)); break;
+                    SpawnTile(TileType.Empty, currentPos);
+                }
+                else
+                {
+                    float randEnv = Random.value;
+                    if (randEnv < 0.33f) SpawnTile(TileType.Environment, currentPos, rockTilePrefab);
+                    else if (randEnv < 0.66f) SpawnTile(TileType.Environment, currentPos, boulderTilePrefab);
+                    else SpawnTile(TileType.Empty, currentPos);
                 }
             }
         }
 
-        playerGridPos = new Vector2Int(0, 0);
         ReplaceTileInGrid(playerGridPos, TileType.Player, playerTilePrefab);
+        if (playerGridPos != currentLevelGoalPosition)
+        {
+            ReplaceTileInGrid(currentLevelGoalPosition, TileType.Goal, goalTilePrefab);
+        }
+        Tile goalInstance = grid[currentLevelGoalPosition.x, currentLevelGoalPosition.y];
+        if (goalInstance is GoalTile gt) gt.UpdateVisualState();
 
-        List<Vector2Int> occupiedCoordinates = new List<Vector2Int>();
-        
-        occupiedCoordinates.Add(playerGridPos);
+        List<Vector2Int> forbiddenPlacementSpots = new List<Vector2Int> { playerGridPos, currentLevelGoalPosition };
 
-        // Enemies
-        PlaceRandomTiles(TileType.Enemy, numberOfEnemies, occupiedCoordinates, new List<TileType> { TileType.Player });
+        bool isTrollFloor = currentFloor == targetFloorToWinGame;
+        if (!isTrollFloor)
+        {
+            PlaceKeyTile(forbiddenPlacementSpots);
+        }
 
-        // Traps
-        PlaceRandomTiles(TileType.Trap, numberOfTraps, occupiedCoordinates, new List<TileType> { TileType.Player, TileType.Enemy });
+        int enemiesThisFloor = numberOfEnemies + ((currentDynamicGridSize - minGridSize) * 1);
+        if (isTrollFloor)
+        {
+            PlaceDynamicContent(TileType.Enemy, 1, forbiddenPlacementSpots);
+        }
+        else
+        {
+            PlaceDynamicContent(TileType.Enemy, enemiesThisFloor, forbiddenPlacementSpots);
+        }
 
-        // Heal
-        PlaceRandomTiles(TileType.HealthPickup, numberOfHealthPickups, occupiedCoordinates, new List<TileType> { TileType.Player, TileType.Enemy, TileType.Trap });
+        int trapsThisFloor = numberOfTraps + ((currentDynamicGridSize - minGridSize) / 2);
+        PlaceDynamicContent(TileType.Trap, trapsThisFloor, forbiddenPlacementSpots);
 
-        Debug.Log($"level gen end");
+        int healthThisFloor = numberOfHealthPickups;
+        PlaceDynamicContent(TileType.HealthPickup, healthThisFloor, forbiddenPlacementSpots);
 
         SpawnPlayerVisual();
+        UpdateFloorDisplay();
         UpdateAllHighlightDisplays();
     }
 
-    void PlaceRandomTiles(TileType typeToPlace, int count, List<Vector2Int> occupiedCoordsOutput, List<TileType> forbiddenToOverwriteTypes)
+    void PlaceKeyTile(List<Vector2Int> occupiedInitially)
     {
-        int placedCount = 0;
-        List<Vector2Int> availableSpots = new List<Vector2Int>();
-        for (int x = 0; x < gridSize; x++)
+        List<Vector2Int> possibleKeySpots = new List<Vector2Int>();
+        for (int x = 0; x < currentDynamicGridSize; x++)
         {
-            for (int y = 0; y < gridSize; y++)
+            for (int y = 0; y < currentDynamicGridSize; y++)
             {
-                Vector2Int currentPos = new Vector2Int(x, y);
-                if (!occupiedCoordsOutput.Contains(currentPos) && !forbiddenToOverwriteTypes.Contains(grid[x, y].type))
+                Vector2Int pos = new Vector2Int(x, y);
+                if (!occupiedInitially.Contains(pos) && (grid[x, y] == null || grid[x, y].type == TileType.Empty || grid[x, y] is EnvironmentTile))
                 {
-                    availableSpots.Add(currentPos);
+                    possibleKeySpots.Add(pos);
                 }
             }
         }
 
-        int attempts = 0;
-        while (placedCount < count && availableSpots.Count > 0 && attempts < gridSize * gridSize)
+        if (possibleKeySpots.Count > 0)
         {
-            attempts++;
-            int randomIndex = Random.Range(0, availableSpots.Count);
-            Vector2Int randomPos = availableSpots[randomIndex];
-
-            GameObject specificPrefab = GetPrefabForType(typeToPlace); // This needs to be smarter for env.
-            if (typeToPlace == TileType.Environment) specificPrefab = Random.value > 0.5f ? rockTilePrefab : bushTilePrefab; // Example
-
-            ReplaceTileInGrid(randomPos, typeToPlace, specificPrefab);
-            occupiedCoordsOutput.Add(randomPos);
-            availableSpots.RemoveAt(randomIndex);
-
-            if (typeToPlace == TileType.Enemy) activeEnemiesCount++;
-            placedCount++;
+            Vector2Int keyPos = possibleKeySpots[Random.Range(0, possibleKeySpots.Count)];
+            ReplaceTileInGrid(keyPos, TileType.Key, keyTilePrefab);
+            occupiedInitially.Add(keyPos);
+            Debug.Log($"Key placed at {keyPos}");
         }
-        if (placedCount < count)
-            Debug.LogWarning($" ?! placed only {count} / {placedCount} of {typeToPlace}");
+        else
+        {
+            // ?? change later
+        }
+    }
+
+    void PlaceDynamicContent(TileType typeToPlace, int count, List<Vector2Int> occupiedAndForbiddenSpots)
+    {
+        int placedSuccessfully = 0;
+        int placementAttempts = 0;
+        int maxPlacementAttempts = currentDynamicGridSize * currentDynamicGridSize * 2;
+
+        List<Vector2Int> potentialSpots = new List<Vector2Int>();
+        for (int x = 0; x < currentDynamicGridSize; x++)
+        {
+            for (int y = 0; y < currentDynamicGridSize; y++)
+            {
+                potentialSpots.Add(new Vector2Int(x, y));
+            }
+        }
+
+        for (int i = 0; i < potentialSpots.Count; i++)
+        {
+            Vector2Int temp = potentialSpots[i];
+            int randomIndex = Random.Range(i, potentialSpots.Count);
+            potentialSpots[i] = potentialSpots[randomIndex];
+            potentialSpots[randomIndex] = temp;
+        }
+
+        foreach (Vector2Int randomPos in potentialSpots)
+        {
+            if (placedSuccessfully >= count) break;
+            if (placementAttempts >= maxPlacementAttempts) break;
+            placementAttempts++;
+
+            if (!occupiedAndForbiddenSpots.Contains(randomPos))
+            {
+                Tile existingTileAtSpot = grid[randomPos.x, randomPos.y];
+                if (existingTileAtSpot != null &&
+                    (existingTileAtSpot.type == TileType.Empty || existingTileAtSpot.type == TileType.Environment))
+                {
+                    GameObject prefabToSpawn = null;
+
+                    if (typeToPlace == TileType.Enemy)
+                    {
+                        bool isTrollFloor = currentFloor == targetFloorToWinGame;
+                        if (isTrollFloor)
+                        {
+                            prefabToSpawn = trollTilePrefab;
+                        }
+                        else
+                        {
+                            prefabToSpawn = GetRegularEnemyPrefabForFloor(currentFloor);
+                        }
+                    }
+                    else
+                    {
+                        prefabToSpawn = GetPrefabForType(typeToPlace);
+                    }
+
+
+                    if (prefabToSpawn != null)
+                    {
+                        ReplaceTileInGrid(randomPos, typeToPlace, prefabToSpawn);
+                        occupiedAndForbiddenSpots.Add(randomPos);
+                        if (typeToPlace == TileType.Enemy) activeEnemiesCount++;
+                        placedSuccessfully++;
+                    }
+                }
+            }
+        }
+
+        if (placedSuccessfully < count)
+        {
+            Debug.LogWarning($"Could not place all {count} of {typeToPlace}. Placed {placedSuccessfully}. Grid might be full or no suitable spots left.");
+        }
     }
 
     Tile SpawnTile(TileType type, Vector2Int gridPos, GameObject specificPrefab = null)
@@ -388,20 +494,6 @@ public class GameManager : MonoBehaviour
 
         Tile tileScript = tileGO.GetComponent<Tile>();
 
-        //! fixed for now don't need this
-        // if (tileScript == null)
-        // {
-        //     Debug.LogWarning($"Tile script missing on prefab {prefabToUse.name} for type {type}. Adding fallback.");
-        //     if (type == TileType.Player) tileScript = tileGO.AddComponent<PlayerTile>();
-        //     else if (type == TileType.Enemy) tileScript = tileGO.AddComponent<EnemyTile>();
-        //     else if (type == TileType.Trap) tileScript = tileGO.AddComponent<TrapTile>();
-        //     else if (type == TileType.HealthPickup) tileScript = tileGO.AddComponent<HealthPickupTile>();
-        //     else if (type == TileType.Environment && specificPrefab == rockTilePrefab) tileScript = tileGO.AddComponent<RockTile>();
-        //     else if (type == TileType.Environment && specificPrefab == bushTilePrefab) tileScript = tileGO.AddComponent<BushTile>();
-        //     else tileScript = tileGO.AddComponent<EmptyTile>();
-        // }
-
-        //? panic if happens again for now
         if (tileScript == null)
         {
             Destroy(tileGO);
@@ -414,6 +506,39 @@ public class GameManager : MonoBehaviour
         return tileScript;
     }
 
+    void SpawnPlayerVisual()
+    {
+        if (playerGameObject != null)
+        {
+            Destroy(playerGameObject);
+        }
+
+        Vector3 playerVisualWorldPos = GridToWorldPosition(playerGridPos);
+        playerVisualWorldPos.z -= 0.1f;
+
+        playerGameObject = Instantiate(playerPrefab, playerVisualWorldPos, Quaternion.identity);
+        Player newPlayerControllerInstance = playerGameObject.GetComponent<Player>();
+
+        if (newPlayerControllerInstance != null)
+        {
+            if (playerController != null)
+            {
+                newPlayerControllerInstance.currentHealth = playerController.currentHealth;
+                newPlayerControllerInstance.maxHealth = playerController.maxHealth;
+                newPlayerControllerInstance.attackDamage = playerController.attackDamage;
+                newPlayerControllerInstance.currentAttackMode = playerController.currentAttackMode;
+            }
+            else
+            {
+                newPlayerControllerInstance.currentHealth = newPlayerControllerInstance.maxHealth;
+            }
+
+            playerController = newPlayerControllerInstance;
+            playerController.healthText = scenePlayerHealthText;
+            playerController.ForceInitialHealthUIDisplayUpdate();
+        }
+    }
+
     void ReplaceTileInGrid(Vector2Int pos, TileType newType, GameObject specificPrefab = null)
     {
         if (tileGameObjects[pos.x, pos.y] != null)
@@ -421,37 +546,81 @@ public class GameManager : MonoBehaviour
         SpawnTile(newType, pos, specificPrefab);
     }
 
-    #endregion
-
-    #region Player Setup
-    // =====================================================================
-    // Player Setup
-    // =====================================================================
-    void SpawnPlayerVisual()
+    void UpdateFloorDisplay()
     {
-        if (playerPrefab == null)
-            return;
-
-        Vector3 playerVisualWorldPos = GridToWorldPosition(playerGridPos);
-        playerVisualWorldPos.z -= 0.1f;
-
-        playerGameObject = Instantiate(playerPrefab, playerVisualWorldPos, Quaternion.identity);
-        playerController = playerGameObject.GetComponent<Player>(); 
-
-        if (playerController != null)
+        if (floorDisplayUIText != null)
         {
-            playerController.healthText = scenePlayerHealthText;
-            playerController.currentHealth = playerController.maxHealth;
-            playerController.ForceInitialHealthUIDisplayUpdate();
+            floorDisplayUIText.text = $"{currentFloor}";
         }
+    }
+
+    public void ReplaceTileInGridDataAndVisuals(Vector2Int pos, TileType newType, GameObject specificPrefab = null)
+    {
+        if (!InBounds(pos)) return;
+        ReplaceTileInGrid(pos, newType, specificPrefab); // This already handles destroying old and spawning new
+    }
+
+    int GetGridSizeForFloor(int floor)
+    {
+        int sizeIncreases = (floor - 1) / floorsPerSizeIncrease;
+        int calculatedSize = minGridSize + sizeIncreases;
+        return Mathf.Min(calculatedSize, maxGridSize);
+    }
+
+    float GetCameraOrthoSizeForGrid(int actualGridSize)
+    {
+        float desiredHeight = (actualGridSize * tileSize) + (tileSize * 1.0f); // Grid height + 1 tile padding
+        return desiredHeight / 2.0f;
+    }
+
+    void DestroyOldTilesAndClearArrays()
+    {
+        if (grid != null)
+        {
+            for (int x = 0; x < grid.GetLength(0); x++)
+            {
+                for (int y = 0; y < grid.GetLength(1); y++)
+                {
+                    if (tileGameObjects != null &&
+                        x < tileGameObjects.GetLength(0) && y < tileGameObjects.GetLength(1) &&
+                        tileGameObjects[x, y] != null)
+                    {
+                        Destroy(tileGameObjects[x, y]);
+                    }
+                }
+            }
+        }
+        grid = null;
+        tileGameObjects = null;
+
+        foreach (GameObject outlineGO in currentPlayerAttackOutlineGOs) { if (outlineGO != null) Destroy(outlineGO); }
+        currentPlayerAttackOutlineGOs.Clear();
+
+        foreach (Tile tile in currentlyHighlightedEnemyAttackTiles) { if (tile != null && tile.gameObject != null) { } }
+        currentlyHighlightedEnemyAttackTiles.Clear();
+    }
+
+    GameObject GetRegularEnemyPrefabForFloor(int floor)
+    {
+        if (floor < 2) return lizardTilePrefab;
+        if (floor < 4)
+        {
+            return Random.value < 0.6f ? lizardTilePrefab : rhinoTilePrefab;
+        }
+        if (floor < targetFloorToWinGame)
+        {
+            float rand = Random.value;
+            if (rand < 0.4f) return lizardTilePrefab;
+            if (rand < 0.75f) return rhinoTilePrefab;
+            return deerTilePrefab;
+        }
+        return lizardTilePrefab;
     }
 
     #endregion
 
-    #region Game State & Logic
-    // =====================================================================
-    // Core Game Logic & State
-    // =====================================================================
+    #region Game Logic
+
     void AttemptSwap(Vector2Int worldDirectionPlayerWantsToMove)
     {
         if (swapAnimationActive) return;
@@ -475,7 +644,7 @@ public class GameManager : MonoBehaviour
         GameObject goOfContentTile = tileGameObjects[targetContentTilePos_Grid.x, targetContentTilePos_Grid.y];
 
         // LOGICAL SWAP
-        
+
         grid[currentPlayerTilePos_Grid.x, currentPlayerTilePos_Grid.y] = contentTileToSwapWith;
         grid[targetContentTilePos_Grid.x, targetContentTilePos_Grid.y] = playerTileInstance;
 
@@ -500,11 +669,51 @@ public class GameManager : MonoBehaviour
         if (playerGameObject) targetPosForPlayerVisual.z = playerGameObject.transform.position.z;
 
         StartCoroutine(AnimateSwapCoroutine(
-            goOfPlayerTile, targetPosForPlayerTile, 
+            goOfPlayerTile, targetPosForPlayerTile,
             goOfContentTile, targetPosForContentTile,
             playerGameObject, targetPosForPlayerVisual,
             contentTileToSwapWith, playerGridPos
         ));
+    }
+
+    public bool AttemptEnemyTileSwap(Tile enemyTileToMove, GameObject enemyGO, Vector2Int worldDirectionEnemyMoves)
+    {
+        if (swapAnimationActive) return false;
+
+        Vector2Int enemyCurrentPos_Grid = enemyTileToMove.gridPosition;
+        Vector2Int enemyTargetPos_Grid = enemyCurrentPos_Grid + worldDirectionEnemyMoves;
+
+        if (!InBounds(enemyTargetPos_Grid)) return false;
+
+        Tile tileAtTargetLocation = grid[enemyTargetPos_Grid.x, enemyTargetPos_Grid.y];
+
+        if (tileAtTargetLocation.type == TileType.Empty ||
+            (tileAtTargetLocation is EnvironmentTile && !(tileAtTargetLocation is TrapTile)))
+        {
+            GameObject goOfTileAtTarget = tileGameObjects[enemyTargetPos_Grid.x, enemyTargetPos_Grid.y];
+
+            grid[enemyCurrentPos_Grid.x, enemyCurrentPos_Grid.y] = tileAtTargetLocation;
+            grid[enemyTargetPos_Grid.x, enemyTargetPos_Grid.y] = enemyTileToMove;
+
+            enemyTileToMove.gridPosition = enemyTargetPos_Grid;
+            tileAtTargetLocation.gridPosition = enemyCurrentPos_Grid;
+
+            tileGameObjects[enemyCurrentPos_Grid.x, enemyCurrentPos_Grid.y] = goOfTileAtTarget;
+            tileGameObjects[enemyTargetPos_Grid.x, enemyTargetPos_Grid.y] = enemyGO;
+
+            if (enemyTileToMove is BaseEnemyTile et && worldDirectionEnemyMoves != Vector2Int.zero)
+            {
+                et.SetFacingDirection(worldDirectionEnemyMoves);
+            }
+
+            StartCoroutine(AnimateSimpleTilePairSwap(
+                enemyGO, GridToWorldPosition(enemyTargetPos_Grid),
+                goOfTileAtTarget, GridToWorldPosition(enemyCurrentPos_Grid)
+            ));
+
+            return true;
+        }
+        return false;
     }
 
     List<Tile> PerformPlayerAttackAndGetHitTiles(Vector2Int playerAttackOriginGridPos)
@@ -522,7 +731,7 @@ public class GameManager : MonoBehaviour
                 Tile targetTile = grid[targetGridPos.x, targetGridPos.y];
                 if (targetTile != null) hitTiles.Add(targetTile);
 
-                if (targetTile is EnemyTile enemy && !enemy.IsDefeated())
+                if (targetTile is BaseEnemyTile enemy && !enemy.IsDefeated())
                 {
                     enemy.TakeDamage(playerController.attackDamage);
                 }
@@ -532,17 +741,15 @@ public class GameManager : MonoBehaviour
         return hitTiles;
     }
 
-
-
     void ProcessEnemyActions()
     {
         if (isGameOver || playerController == null) return;
 
-        for (int x = 0; x < gridSize; x++)
+        for (int x = 0; x < currentDynamicGridSize; x++)
         {
-            for (int y = 0; y < gridSize; y++)
+            for (int y = 0; y < currentDynamicGridSize; y++)
             {
-                if (grid[x, y] is EnemyTile enemyTile)
+                if (grid[x, y] is BaseEnemyTile enemyTile)
                 {
                     if (enemyTile != null && enemyTile.gameObject.activeInHierarchy && !enemyTile.IsDefeated())
                     {
@@ -558,18 +765,9 @@ public class GameManager : MonoBehaviour
     {
         if (isGameOver) return;
         activeEnemiesCount--;
+        currentScore += scoreKillEnemy;
+        UpdateScoreDisplay();
         UpdateAllHighlightDisplays();
-        CheckWinCondition();
-    }
-
-    void CheckWinCondition()
-    {
-        if (isGameOver) return;
-
-        if (activeEnemiesCount <= 0)
-        {
-            GameOver("You killed all enemies.");
-        }
     }
 
     public void GameOver(string message)
@@ -582,12 +780,79 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    public void LevelCleared()
+    {
+        if (isGameOver) return;
+
+        currentScore += scoreAdvanceLevel;
+        UpdateScoreDisplay();
+
+        currentFloor++;
+
+        if (currentFloor > targetFloorToWinGame)
+        {
+            GameOver($"Victory!\nYou saved this retarded world.\nCongradulations.");
+        }
+        else
+        {
+            ClearBoardForNewLevel();
+            GenerateLevel();
+        }
+    }
+
+    void ClearBoardForNewLevel()
+    {
+        for (int x = 0; x < currentDynamicGridSize; x++)
+        {
+            for (int y = 0; y < currentDynamicGridSize; y++)
+            {
+                if (tileGameObjects[x, y] != null)
+                {
+                    Destroy(tileGameObjects[x, y]);
+                }
+                grid[x, y] = null;
+            }
+        }
+
+        ClearAllDisplayedEnemyAttackHighlights();
+        ClearPlayerAttackAreaVisuals();
+        hoveredEnemy = null;
+        moveQueue.Clear();
+    }
+
+    public void CollectKey()
+    {
+        hasKeyOnCurrentFloor = true;
+        currentScore += scoreCollectKey;
+        UpdateScoreDisplay();
+
+        if (InBounds(currentLevelGoalPosition))
+        {
+            Tile goalInstance = grid[currentLevelGoalPosition.x, currentLevelGoalPosition.y];
+            if (goalInstance is GoalTile gt)
+            {
+                gt.UpdateVisualState();
+            }
+        }
+    }
+
+    void ApplyTurnPenalty()
+    {
+        if (isGameOver) return;
+
+        currentScore -= scorePenaltyPerTurn;
+        if (currentScore < 0)
+        {
+            currentScore = 0;
+        }
+        UpdateScoreDisplay();
+        Debug.Log($"Turn penalty applied. Score: {currentScore}");
+    }
+
     #endregion
 
-    #region Visuals & Highlighting
-    // =====================================================================
-    // Visuals & Highlighting
-    // =====================================================================
+    #region Visuals
+
     void UpdateAllHighlightDisplays()
     {
         if (isGameOver)
@@ -651,7 +916,7 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    void HighlightSingleEnemyAttackArea(EnemyTile enemy)
+    void HighlightSingleEnemyAttackArea(BaseEnemyTile enemy)
     {
         if (enemy == null || enemy.IsDefeated()) return;
 
@@ -675,11 +940,11 @@ public class GameManager : MonoBehaviour
 
     void HighlightAllEnemyAttackAreas()
     {
-        for (int x = 0; x < gridSize; x++)
+        for (int x = 0; x < currentDynamicGridSize; x++)
         {
-            for (int y = 0; y < gridSize; y++)
+            for (int y = 0; y < currentDynamicGridSize; y++)
             {
-                if (grid[x, y] is EnemyTile enemy && !enemy.IsDefeated())
+                if (grid[x, y] is BaseEnemyTile enemy && !enemy.IsDefeated())
                 {
                     HighlightSingleEnemyAttackArea(enemy);
                 }
@@ -687,19 +952,23 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    void UpdateScoreDisplay()
+    {
+        if (scoreDisplayUIText != null)
+        {
+            scoreDisplayUIText.text = $"score: {currentScore}";
+        }
+    }
+
     #endregion
 
-    #region Animation Coroutines
-    // =====================================================================
-    // Animation Coroutines
-    // =====================================================================
+    #region Animations
+
     private IEnumerator AnimateSwapCoroutine(
         GameObject tile1GO, Vector3 tile1FinalPos,
         GameObject tile2GO, Vector3 tile2FinalPos,
         GameObject playerVisualGO, Vector3 playerVisualTargetPos,
-        Tile tileSwappedWithPlayer,
-        Vector2Int playerNewGridPos_AttackOrigin
-    )
+        Tile tileSwappedWithPlayer, Vector2Int playerNewGridPos_AttackOrigin)
     {
         swapAnimationActive = true;
         float elapsedTime = 0f;
@@ -712,19 +981,16 @@ public class GameManager : MonoBehaviour
 
         SpriteRenderer tile1Sr = tile1GO.GetComponent<SpriteRenderer>();
         SpriteRenderer tile2Sr = tile2GO.GetComponent<SpriteRenderer>();
-        SpriteRenderer playerSr = playerVisualGO?.GetComponent<SpriteRenderer>(); // Use ?. for safety if playerVisualGO could be null
+        SpriteRenderer playerSr = playerVisualGO?.GetComponent<SpriteRenderer>();
 
         int tile1OriginalOrder = tile1Sr?.sortingOrder ?? 0;
         int tile2OriginalOrder = tile2Sr?.sortingOrder ?? 0;
         int playerOriginalOrder = playerSr?.sortingOrder ?? 0;
 
-        
-        // Bring to front during animation
-        if (playerSr != null) playerSr.sortingOrder = 102; 
+        if (playerSr != null) playerSr.sortingOrder = 102;
         if (tile1Sr != null) tile1Sr.sortingOrder = 101;
         if (tile2Sr != null) tile2Sr.sortingOrder = 100;
 
-        //! goota remove this after animations
         List<GameObject> tempPreviewOutlines = new List<GameObject>();
         if (playerController != null && playerAttackOutlinePrefab != null)
         {
@@ -737,13 +1003,12 @@ public class GameManager : MonoBehaviour
                     Vector3 worldPos = GridToWorldPosition(targetGridPos);
                     GameObject outlineGO = Instantiate(playerAttackOutlinePrefab, worldPos, Quaternion.identity, this.transform);
                     SpriteRenderer olSr = outlineGO.GetComponent<SpriteRenderer>();
-                    if (olSr != null) olSr.color = new Color(attackHighlightColor.r, attackHighlightColor.g, attackHighlightColor.b, 0.5f); // More transparent
+                    if (olSr != null) olSr.color = new Color(attackHighlightColor.r, attackHighlightColor.g, attackHighlightColor.b, 0.3f);
                     tempPreviewOutlines.Add(outlineGO);
                 }
             }
         }
 
-        // SWAP LOGIC
         while (elapsedTime < swapAnimationDuration)
         {
             elapsedTime += Time.deltaTime;
@@ -764,46 +1029,78 @@ public class GameManager : MonoBehaviour
         tile2GO.transform.position = tile2FinalPos;
         if (playerVisualGO != null) playerVisualGO.transform.position = playerVisualTargetPos;
 
-        // Restore original sorting orders
         if (tile1Sr != null) tile1Sr.sortingOrder = tile1OriginalOrder;
         if (tile2Sr != null) tile2Sr.sortingOrder = tile2OriginalOrder;
         if (playerSr != null) playerSr.sortingOrder = playerOriginalOrder;
 
-        // 1. Player Performs Logical Attack from NEW position
         List<Tile> tilesHitByPlayer = PerformPlayerAttackAndGetHitTiles(playerNewGridPos_AttackOrigin);
         StartCoroutine(FlashHitTiles(tilesHitByPlayer, enemyHitFlashColor, enemyHitFlashDuration));
 
-        //! remove this too 
         foreach (GameObject outline in tempPreviewOutlines) Destroy(outline);
         tempPreviewOutlines.Clear();
 
-        // Check if game ended after attack
         if (isGameOver)
         {
             swapAnimationActive = false;
             UpdateAllHighlightDisplays();
-            yield break; // exit
+            yield break;
         }
 
-        // 2. interaction with the swapped tile
         bool canInteract = true;
-        if (tileSwappedWithPlayer is EnemyTile swappedEnemy)
+        if (tileSwappedWithPlayer is BaseEnemyTile swappedEnemy)
         {
             if (swappedEnemy.IsDefeated())
             {
-                canInteract = false; // Don't interact with a just-defeated enemy
-                Debug.Log($"Player swapped with {swappedEnemy.gameObject.name}, but it was just defeated. No OnPlayerEnter interaction.");
+                canInteract = false;
             }
         }
 
         if (canInteract)
             tileSwappedWithPlayer.OnPlayerEnter(playerController);
 
-        // 3. enemy turn
-        if (!isGameOver)
-            ProcessEnemyActions();
 
-        // 4. exit
+        swapAnimationActive = false;
+        ProcessEnemyActions();
+        ApplyTurnPenalty();
+        UpdateAllHighlightDisplays();
+        yield return null;
+    }
+
+    private IEnumerator AnimateSimpleTilePairSwap(
+        GameObject tile1GO, Vector3 tile1TargetPos,
+        GameObject tile2GO, Vector3 tile2TargetPos)
+    {
+        swapAnimationActive = true;
+        float elapsedTime = 0f;
+
+        Vector3 tile1StartPos = tile1GO.transform.position;
+        Vector3 tile2StartPos = tile2GO.transform.position;
+
+        SpriteRenderer sr1 = tile1GO.GetComponent<SpriteRenderer>();
+        SpriteRenderer sr2 = tile2GO.GetComponent<SpriteRenderer>();
+        int order1Original = sr1?.sortingOrder ?? 0;
+        int order2Original = sr2?.sortingOrder ?? 0;
+
+        if (sr1 != null) sr1.sortingOrder = 90;
+        if (sr2 != null) sr2.sortingOrder = 89;
+
+        while (elapsedTime < swapAnimationDuration * 0.8f)
+        {
+            elapsedTime += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsedTime / (swapAnimationDuration * 0.8f));
+            t = t * t * (3f - 2f * t);
+
+            tile1GO.transform.position = Vector3.Lerp(tile1StartPos, tile1TargetPos, t);
+            tile2GO.transform.position = Vector3.Lerp(tile2StartPos, tile2TargetPos, t);
+            yield return null;
+        }
+
+        tile1GO.transform.position = tile1TargetPos;
+        tile2GO.transform.position = tile2TargetPos;
+
+        if (sr1 != null) sr1.sortingOrder = order1Original;
+        if (sr2 != null) sr2.sortingOrder = order2Original;
+
         swapAnimationActive = false;
         UpdateAllHighlightDisplays();
         yield return null;
@@ -840,7 +1137,7 @@ public class GameManager : MonoBehaviour
 
         foreach (Tile tile in tilesToFlash)
         {
-            if (tile != null && !(tile is EnemyTile))
+            if (tile != null && !(tile is BaseEnemyTile))
             {
                 SpriteRenderer sr = tile.GetComponent<SpriteRenderer>();
                 if (sr != null)
@@ -864,21 +1161,19 @@ public class GameManager : MonoBehaviour
 
     #endregion
 
-    #region Utility & Helper Methods
-    // =====================================================================
-    // Utility & Helper Methods
-    // =====================================================================
+    #region Helpers
+
     public Vector3 GridToWorldPosition(Vector2Int gridPos)
     {
-        float worldX = (gridPos.x - (gridSize - 1) / 2.0f) * tileSize;
-        float worldY = (gridPos.y - (gridSize - 1) / 2.0f) * tileSize;
+        float worldX = (gridPos.x - (currentDynamicGridSize - 1) / 2.0f) * tileSize;
+        float worldY = (gridPos.y - (currentDynamicGridSize - 1) / 2.0f) * tileSize;
         return new Vector3(worldX, worldY, 0);
     }
 
     public Vector2Int WorldToGridPosition(Vector3 worldPos)
     {
-        float centerX_grid = (gridSize - 1) / 2.0f;
-        float centerY_grid = (gridSize - 1) / 2.0f;
+        float centerX_grid = (currentDynamicGridSize - 1) / 2.0f;
+        float centerY_grid = (currentDynamicGridSize - 1) / 2.0f;
 
         int gridX = Mathf.RoundToInt(worldPos.x / tileSize + centerX_grid);
         int gridY = Mathf.RoundToInt(worldPos.y / tileSize + centerY_grid);
@@ -887,8 +1182,8 @@ public class GameManager : MonoBehaviour
 
     public bool InBounds(Vector2Int gridPos)
     {
-        return gridPos.x >= 0 && gridPos.x < gridSize &&
-               gridPos.y >= 0 && gridPos.y < gridSize;
+        return gridPos.x >= 0 && gridPos.x < currentDynamicGridSize &&
+               gridPos.y >= 0 && gridPos.y < currentDynamicGridSize;
     }
 
     bool IsAdjacent(Vector2Int pos1, Vector2Int pos2)
@@ -946,10 +1241,11 @@ public class GameManager : MonoBehaviour
         {
             case TileType.Empty: return emptyTilePrefab;
             case TileType.Trap: return trapTilePrefab;
-            case TileType.Enemy: return enemyTilePrefab;
             case TileType.HealthPickup: return healthPickupPrefab;
             case TileType.Player: return playerTilePrefab;
-            case TileType.Environment: return Random.value > 0.5f ? rockTilePrefab : bushTilePrefab; //! fix later
+            case TileType.Goal: return goalTilePrefab;
+            case TileType.Key: return keyTilePrefab;
+            case TileType.Environment: return Random.value > 0.5f ? rockTilePrefab : boulderTilePrefab; //! fix later
             default: return emptyTilePrefab;
         }
     }

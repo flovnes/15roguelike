@@ -5,6 +5,7 @@ public class RockTile : EnvironmentTile
     {
         base.Initialize(pos, TileType.Environment);
         this.gameObject.name = $"Rock_Tile_{pos.x}_{pos.y}";
+        blocksLineOfSight = false;
     }
     public override void OnPlayerEnter(Player player)
     {

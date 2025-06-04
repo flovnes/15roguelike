@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: b732a9280f799f146a626631a8829b8b
+guid: bcb60b06eda478d45bbd11683ef76c7c
 TextureImporter:
   internalIDToNameTable:
   - first:
@@ -116,10 +116,10 @@ TextureImporter:
       name: rock_0
       rect:
         serializedVersion: 2
-        x: 1
+        x: 0
         y: 0
-        width: 142
-        height: 138
+        width: 140
+        height: 140
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}

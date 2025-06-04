@@ -77,7 +77,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: -4856125253252628537, guid: eec2cc6850d65e344b90f2a7dc6557b4, type: 3}
+  m_Sprite: {fileID: -5999797029851294601, guid: 629b989b356ff1945bd505219373fa91, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -103,3 +103,5 @@ MonoBehaviour:
   gridPosition: {x: 0, y: 0}
   type: 0
   damage: 10
+  activeSprite: {fileID: -5999797029851294601, guid: 629b989b356ff1945bd505219373fa91, type: 3}
+  inactiveSprite: {fileID: -3496347564477508385, guid: 65d78edc50bfea9409a3beaeaf27611c, type: 3}

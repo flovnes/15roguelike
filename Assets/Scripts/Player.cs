@@ -43,7 +43,7 @@ public class Player : MonoBehaviour
         if (currentHealth <= 0)
         {
             currentHealth = 0;
-            if (GameManager.Instance != null) GameManager.Instance.GameOver("You died.");
+            if (GameManager.Instance != null) GameManager.Instance.GameOver("You are Dead.");
         }
         
         UpdateHealthTextUI();
@@ -117,7 +117,6 @@ public class Player : MonoBehaviour
                 currentAttackMode = PlayerAttackMode.SwingLeft;
                 break;
         }
-        // Debug.Log($"Player attack mode: {currentAttackMode}");
     }
     
     public PlayerAttackMode PeekNextAttackMode()

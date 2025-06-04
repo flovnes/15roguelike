@@ -47,7 +47,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   gridPosition: {x: 0, y: 0}
   type: 0
-  healthToRestore: 20
+  healthToRestore: 100
+  activeSprite: {fileID: -5278734259511242463, guid: 8424cf8a3e1dd1c43a02ff7b532f8234, type: 3}
+  inactiveSprite: {fileID: 1876989099917340101, guid: d6f957f2c6586dd48a583e3ea9ed8a63, type: 3}
 --- !u!212 &8063193771320957472
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -92,7 +94,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: -5278734259511242463, guid: 387e096bdd7629a4d9ead3fd5f602340, type: 3}
+  m_Sprite: {fileID: -5278734259511242463, guid: 8424cf8a3e1dd1c43a02ff7b532f8234, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
