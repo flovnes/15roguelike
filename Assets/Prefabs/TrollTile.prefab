@@ -102,6 +102,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   gridPosition: {x: 0, y: 0}
   type: 0
+  deadSprite: {fileID: -3089704190083090542, guid: 75bbc6286b056914ab642766aa15f72b, type: 3}
   maxHealth: 30
   currentHealth: 0
   baseAttackDamage: 10

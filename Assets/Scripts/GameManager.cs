@@ -59,7 +59,6 @@ public class GameManager : MonoBehaviour
     public GameObject deerTilePrefab;
     public GameObject trollTilePrefab;
     public GameObject trapTilePrefab;
-    public GameObject enemyTilePrefab;
     public GameObject rockTilePrefab;
     public GameObject boulderTilePrefab;
     public GameObject healthPickupPrefab;
@@ -102,6 +101,7 @@ public class GameManager : MonoBehaviour
 
     [Header("Animation Settings")]
     public float swapAnimationDuration = 0.25f;
+    public float enemySwapAnimationDuration = 0.1f;
     private bool swapAnimationActive = false;
 
     [Header("Input Queue")]
@@ -119,7 +119,7 @@ public class GameManager : MonoBehaviour
     private Vector2Int playerGridPos;
     private List<GameObject> currentPlayerAttackOutlineGOs = new List<GameObject>();
     private List<Tile> currentlyHighlightedEnemyAttackTiles = new List<Tile>();
-    private BaseEnemyTile hoveredEnemy = null;
+    private EnemyTile hoveredEnemy = null;
     private bool showAllHighlightsOverride = false;
     private Tile tileBeingDragged = null;
     private Vector2Int dragTileOriginalGridPos;
@@ -199,13 +199,13 @@ public class GameManager : MonoBehaviour
         // Hover
         if (tileBeingDragged == null && !Input.GetMouseButton(0) && !swapAnimationActive)
         {
-            BaseEnemyTile previouslyHovered = hoveredEnemy;
+            EnemyTile previouslyHovered = hoveredEnemy;
             hoveredEnemy = null;
 
             if (InBounds(currentMouseGridPos))
             {
                 Tile tileUnderMouse = grid[currentMouseGridPos.x, currentMouseGridPos.y];
-                if (tileUnderMouse is BaseEnemyTile enemy && !enemy.IsDefeated())
+                if (tileUnderMouse is EnemyTile enemy && !enemy.IsDefeated())
                 {
                     hoveredEnemy = enemy;
                 }
@@ -701,7 +701,7 @@ public class GameManager : MonoBehaviour
             tileGameObjects[enemyCurrentPos_Grid.x, enemyCurrentPos_Grid.y] = goOfTileAtTarget;
             tileGameObjects[enemyTargetPos_Grid.x, enemyTargetPos_Grid.y] = enemyGO;
 
-            if (enemyTileToMove is BaseEnemyTile et && worldDirectionEnemyMoves != Vector2Int.zero)
+            if (enemyTileToMove is EnemyTile et && worldDirectionEnemyMoves != Vector2Int.zero)
             {
                 et.SetFacingDirection(worldDirectionEnemyMoves);
             }
@@ -731,7 +731,7 @@ public class GameManager : MonoBehaviour
                 Tile targetTile = grid[targetGridPos.x, targetGridPos.y];
                 if (targetTile != null) hitTiles.Add(targetTile);
 
-                if (targetTile is BaseEnemyTile enemy && !enemy.IsDefeated())
+                if (targetTile is EnemyTile enemy && !enemy.IsDefeated())
                 {
                     enemy.TakeDamage(playerController.attackDamage);
                 }
@@ -749,7 +749,7 @@ public class GameManager : MonoBehaviour
         {
             for (int y = 0; y < currentDynamicGridSize; y++)
             {
-                if (grid[x, y] is BaseEnemyTile enemyTile)
+                if (grid[x, y] is EnemyTile enemyTile)
                 {
                     if (enemyTile != null && enemyTile.gameObject.activeInHierarchy && !enemyTile.IsDefeated())
                     {
@@ -916,7 +916,7 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    void HighlightSingleEnemyAttackArea(BaseEnemyTile enemy)
+    void HighlightSingleEnemyAttackArea(EnemyTile enemy)
     {
         if (enemy == null || enemy.IsDefeated()) return;
 
@@ -944,7 +944,7 @@ public class GameManager : MonoBehaviour
         {
             for (int y = 0; y < currentDynamicGridSize; y++)
             {
-                if (grid[x, y] is BaseEnemyTile enemy && !enemy.IsDefeated())
+                if (grid[x, y] is EnemyTile enemy && !enemy.IsDefeated())
                 {
                     HighlightSingleEnemyAttackArea(enemy);
                 }
@@ -971,6 +971,7 @@ public class GameManager : MonoBehaviour
         Tile tileSwappedWithPlayer, Vector2Int playerNewGridPos_AttackOrigin)
     {
         swapAnimationActive = true;
+        bool levelWasClearedThisTurn = false;
         float elapsedTime = 0f;
 
         ClearPlayerAttackAreaVisuals();
@@ -1001,9 +1002,9 @@ public class GameManager : MonoBehaviour
                 if (InBounds(targetGridPos))
                 {
                     Vector3 worldPos = GridToWorldPosition(targetGridPos);
-                    GameObject outlineGO = Instantiate(playerAttackOutlinePrefab, worldPos, Quaternion.identity, this.transform);
+                    GameObject outlineGO = Instantiate(playerAttackOutlinePrefab, worldPos, Quaternion.identity, transform);
                     SpriteRenderer olSr = outlineGO.GetComponent<SpriteRenderer>();
-                    if (olSr != null) olSr.color = new Color(attackHighlightColor.r, attackHighlightColor.g, attackHighlightColor.b, 0.3f);
+                    if (olSr != null) olSr.color = new Color(attackHighlightColor.r + 0.1f, attackHighlightColor.g + 0.1f, attackHighlightColor.b + 0.1f, 1f);
                     tempPreviewOutlines.Add(outlineGO);
                 }
             }
@@ -1014,8 +1015,8 @@ public class GameManager : MonoBehaviour
             elapsedTime += Time.deltaTime;
             float t = Mathf.Clamp01(elapsedTime / swapAnimationDuration);
 
-            // t = 1f - (1f - t) * (1f - t); // ease-out
-            t = t * t * (3f - 2f * t);       // ease-in-out 
+            t = 1f - (1f - t) * (1f - t);
+            // t = t * t * (3f - t * 2f);
 
             tile1GO.transform.position = Vector3.Lerp(tile1StartPos, tile1FinalPos, t);
             tile2GO.transform.position = Vector3.Lerp(tile2StartPos, tile2FinalPos, t);
@@ -1047,22 +1048,37 @@ public class GameManager : MonoBehaviour
         }
 
         bool canInteract = true;
-        if (tileSwappedWithPlayer is BaseEnemyTile swappedEnemy)
+        if (tileSwappedWithPlayer is EnemyTile swappedEnemy && swappedEnemy.IsDefeated())
         {
-            if (swappedEnemy.IsDefeated())
+            canInteract = false;
+        }
+
+        if (canInteract && tileSwappedWithPlayer != null && !isGameOver)
+        {
+            int floorBeforeInteraction = currentFloor;
+            tileSwappedWithPlayer.OnPlayerEnter(playerController);
+            if (currentFloor > floorBeforeInteraction || (isGameOver && currentFloor > targetFloorToWinGame) )
             {
-                canInteract = false;
+                levelWasClearedThisTurn = true;
             }
         }
 
-        if (canInteract)
-            tileSwappedWithPlayer.OnPlayerEnter(playerController);
-
-
         swapAnimationActive = false;
-        ProcessEnemyActions();
-        ApplyTurnPenalty();
-        UpdateAllHighlightDisplays();
+
+        if (levelWasClearedThisTurn)
+        {
+            yield break;
+        }
+
+        if (!isGameOver)
+        {
+            ProcessEnemyActions();
+        }
+
+        if (!swapAnimationActive)
+        {
+            UpdateAllHighlightDisplays();
+        }
         yield return null;
     }
 
@@ -1084,10 +1100,10 @@ public class GameManager : MonoBehaviour
         if (sr1 != null) sr1.sortingOrder = 90;
         if (sr2 != null) sr2.sortingOrder = 89;
 
-        while (elapsedTime < swapAnimationDuration * 0.8f)
+        while (elapsedTime < enemySwapAnimationDuration)
         {
             elapsedTime += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsedTime / (swapAnimationDuration * 0.8f));
+            float t = Mathf.Clamp01(elapsedTime / enemySwapAnimationDuration);
             t = t * t * (3f - 2f * t);
 
             tile1GO.transform.position = Vector3.Lerp(tile1StartPos, tile1TargetPos, t);
@@ -1132,29 +1148,30 @@ public class GameManager : MonoBehaviour
     {
         if (tilesToFlash == null || tilesToFlash.Count == 0) yield break;
 
-        List<SpriteRenderer> srs = new List<SpriteRenderer>();
-        List<Color> originalColors = new List<Color>();
+        Dictionary<SpriteRenderer, Color> originalTileColors = new();
 
         foreach (Tile tile in tilesToFlash)
         {
-            if (tile != null && !(tile is BaseEnemyTile))
+            if (tile != null)
             {
-                SpriteRenderer sr = tile.GetComponent<SpriteRenderer>();
-                if (sr != null)
-                {
-                    srs.Add(sr);
-                    originalColors.Add(sr.color);
+                if (!tile.TryGetComponent<SpriteRenderer>(out var sr)) continue;
+
+                if (tile is EnemyTile enemy && !enemy.IsDefeated()) continue;
+
+                if (originalTileColors.TryAdd(sr, sr.color))
                     sr.color = flashColor;
-                }
             }
         }
 
-        if (srs.Count > 0)
+        if (originalTileColors.Count > 0)
         {
-            yield return new WaitForSeconds(duration);
-            for (int i = 0; i < srs.Count; i++)
+            yield return new WaitForSeconds(duration/2);
+            foreach (KeyValuePair<SpriteRenderer, Color> entry in originalTileColors)
             {
-                if (srs[i] != null) srs[i].color = originalColors[i];
+                if (entry.Key != null)
+                {
+                    entry.Key.color = entry.Value;
+                }
             }
         }
     }

@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-public class TrollTile : BaseEnemyTile
+public class TrollTile : EnemyTile
 {
     public override void Initialize(Vector2Int pos, TileType tileType)
     {

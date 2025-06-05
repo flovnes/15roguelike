@@ -51,10 +51,5 @@ public abstract class Tile : MonoBehaviour
         isHighlightedAsAttackTarget = isHighlighted;
         sr.color = isHighlighted ? highlightColor : originalColor;
     }
-
-    public void UpdateOriginalColor()
-    {
-        if(sr != null) originalColor = sr.color;
-    }
 }
 

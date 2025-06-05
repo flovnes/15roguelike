@@ -816,10 +816,10 @@ MonoBehaviour:
   playerAttackOutlinePrefab: {fileID: 7030032685487151741, guid: b26584d6d1073434498e5e5ea593a3a8, type: 3}
   scenePlayerHealthText: {fileID: 1071745368}
   messageText: {fileID: 71046758}
-  attackHighlightColor: {r: 1, g: 0.5990566, b: 0.5990566, a: 0.39215687}
+  attackHighlightColor: {r: 1, g: 0.740566, b: 0.740566, a: 1}
   showAllAttackAreasKey: 308
-  enemyHitFlashColor: {r: 1, g: 1, b: 1, a: 1}
-  enemyHitFlashDuration: 2
+  enemyHitFlashColor: {r: 0.75, g: 0.8431629, b: 1, a: 1}
+  enemyHitFlashDuration: 0.2
   currentFloor: 0
   targetFloorToWinGame: 10
   floorDisplayUIText: {fileID: 479351343}
@@ -829,7 +829,8 @@ MonoBehaviour:
   scorePenaltyPerTurn: 10
   scoreDisplayUIText: {fileID: 707094279}
   playerAttackFacingDirection: {x: 0, y: 1}
-  swapAnimationDuration: 0.2
+  swapAnimationDuration: 0.3
+  enemySwapAnimationDuration: 0.2
   maxQueuedMoves: 1
 --- !u!4 &1019804770
 Transform:

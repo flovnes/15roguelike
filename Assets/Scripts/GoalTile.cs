@@ -2,16 +2,13 @@ using UnityEngine;
 
 public class GoalTile : Tile
 {
-    [Header("State Sprites")]
     public Sprite activeSprite;
     public Sprite inactiveSprite;
-    private bool isOpen = false;
 
     public override void Initialize(Vector2Int pos, TileType tileType)
     {
         base.Initialize(pos, TileType.Goal);
         this.gameObject.name = $"Goal_Tile_{pos.x}_{pos.y}";
-        isOpen = false;
         if (sr != null && inactiveSprite != null)
         {
             sr.sprite = inactiveSprite;
@@ -21,21 +18,18 @@ public class GoalTile : Tile
 
     public void UpdateVisualState()
     {
-        if (GameManager.Instance == null) return;
+        if (GameManager.Instance == null || sr == null) return;
 
-        isOpen = GameManager.Instance.HasKey();
-        if (sr != null)
-        {
-            sr.sprite = isOpen ? activeSprite : inactiveSprite;
-            originalColor = sr.color;
-        }
+        bool currentlyHasKey = GameManager.Instance.HasKey();
+        sr.sprite = currentlyHasKey ? activeSprite : inactiveSprite;
+        originalColor = sr.color;
     }
 
     public override void OnPlayerEnter(Player player)
     {
-        if (GameManager.Instance == null) return;
+        if (GameManager.Instance == null || player == null) return;
 
-        if (isOpen)
+        if (GameManager.Instance.HasKey())
         {
             GameManager.Instance.LevelCleared();
         }

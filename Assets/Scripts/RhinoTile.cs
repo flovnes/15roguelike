@@ -2,7 +2,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-public class RhinomanTile : BaseEnemyTile
+public class RhinomanTile : EnemyTile
 {
     public override void Initialize(Vector2Int pos, TileType tileType)
     {

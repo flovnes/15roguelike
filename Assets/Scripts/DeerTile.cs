@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-public class DeermanTile : BaseEnemyTile
+public class DeermanTile : EnemyTile
 {
     public override void Initialize(Vector2Int pos, TileType tileType)
     {
@@ -45,7 +45,7 @@ public class DeermanTile : BaseEnemyTile
                     if (!GameManager.Instance.InBounds(currentCheckPos)) { clearShot = false; break; }
 
                     Tile tileInPath = gameGrid[currentCheckPos.x, currentCheckPos.y];
-                    if (tileInPath is BaseEnemyTile || (tileInPath is EnvironmentTile env && env.blocksLineOfSight))
+                    if (tileInPath is EnemyTile || (tileInPath is EnvironmentTile env && env.blocksLineOfSight))
                     {
                         clearShot = false;
                         break;

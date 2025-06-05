@@ -72,7 +72,6 @@ public class Player : MonoBehaviour
         transform.position = targetWorldPos;
     }
 
-    // --- PLAYER ATTACK LOGIC ---
     public List<Vector2Int> GetCurrentAttackPatternRelative(Vector2Int playerFacingDirection)
     {
         List<Vector2Int> pattern = new List<Vector2Int>();

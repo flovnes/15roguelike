@@ -1,242 +1,185 @@
-// using UnityEngine;
-// using System.Collections.Generic;
-// using System.Collections;
+using UnityEngine;
+using System.Collections.Generic;
+using System.Collections;
 
-// public class BaseEnemyTile : Tile
-// {
-//     public int maxHealth = 50;
-//     public int currentHealth;
-//     public int attackDamage = 15;
-//     private bool isDefeated = false;
+public abstract class EnemyTile : Tile
+{
+    public Sprite deadSprite;
+    public int maxHealth = 30;
+    public int currentHealth;
+    public int baseAttackDamage = 10;
+    public int performActionDamage = 5;
 
-//     public Vector2Int facingDirection { get; protected set; }
+    protected bool isDefeated = false;
+    public Vector2Int facingDirection { get; protected set; }
 
-//     protected enum AttackPatternType { ForwardLine, Cone, Adjacent }
-//     [SerializeField] protected AttackPatternType attackPattern = AttackPatternType.Cone;
-//     [SerializeField] protected int attackRange = 2;
-
-//     private int turnsSincePlayerSpotted = 0;
-//     private bool playerHasBeenSpotted = false;
-
-//     protected override void Awake()
-//     {
-//         base.Awake();
-//         SetRandomFacingDirection();
-//         currentHealth = maxHealth;
-//     }
-
-//     public void SetRandomFacingDirection()
-//     {
-//         int rand = Random.Range(0, 4);
-//         switch (rand)
-//         {
-//             case 0: facingDirection = Vector2Int.up; break;
-//             case 1: facingDirection = Vector2Int.down; break;
-//             case 2: facingDirection = Vector2Int.left; break;
-//             case 3: facingDirection = Vector2Int.right; break;
-//         }
-//     }
-
-//     public override void Initialize(Vector2Int pos, TileType tileType)
-//     {
-//         base.Initialize(pos, tileType);
-//         currentHealth = maxHealth;
-//         SetRandomFacingDirection();
-//         UpdateOriginalColor();
-//     }
+    protected int actionTurnCounter = 1;
+    protected bool playerHasBeenSpotted = false;
+    protected int turnsSincePlayerSpotted = 0;
+    public int proximityDetectionRange = 2;
 
 
-//     public override void OnPlayerEnter(Player player)
-//     {
-//         if (isDefeated) return;
-//         player.TakeDamage(attackDamage);
-//     }
+    protected override void Awake()
+    {
+        base.Awake();
+        currentHealth = maxHealth;
+        if (facingDirection == Vector2Int.zero) SetDefaultFacingDirection();
+    }
 
-//     public void TakeDamage(int damageAmount)
-//     {
-//         if (isDefeated) return;
+    public override void Initialize(Vector2Int pos, TileType tileType)
+    {
+        base.Initialize(pos, tileType);
+        currentHealth = maxHealth;
+        if (facingDirection == Vector2Int.zero) SetDefaultFacingDirection();
+        isDefeated = false;
+        actionTurnCounter = Random.Range(1, 3);
+        playerHasBeenSpotted = false;
+        turnsSincePlayerSpotted = 0;
+    }
 
-//         currentHealth -= damageAmount;
+    public virtual void SetDefaultFacingDirection()
+    {
+        int rand = Random.Range(0, 4);
+        if (rand == 0) facingDirection = Vector2Int.up;
+        else if (rand == 1) facingDirection = Vector2Int.down;
+        else if (rand == 2) facingDirection = Vector2Int.left;
+        else facingDirection = Vector2Int.right;
+    }
 
-//         if (sr != null) StartCoroutine(FlashColor(Color.red, 0.15f));
+    public virtual void SetFacingDirection(Vector2Int newDirection)
+    {
+        if (newDirection != Vector2Int.zero)
+        {
+            facingDirection = newDirection;
+        }
+    }
 
+    public virtual void TakeDamage(int damageAmount)
+    {
+        if (sr != null) StartCoroutine(FlashColorFeedback(GameManager.Instance.enemyHitFlashColor, GameManager.Instance.enemyHitFlashDuration));
 
-//         if (currentHealth <= 0)
-//         {
-//             currentHealth = 0;
-//             DefeatEnemy();
-//         }
-//     }
+        if (isDefeated) return;
+        currentHealth -= damageAmount;
 
-//     public virtual void PerformAction(Player player, Vector2Int playerActualGridPos, Tile[,] gameGrid)
-//     {
-//         if (isDefeated || !gameObject.activeInHierarchy || GameManager.Instance.IsAnimating()) return;
+        if (currentHealth <= 0)
+        {
+            currentHealth = 0;
+            DefeatEnemy();
+        }
+    }
 
-//         int distanceToPlayer = Mathf.Abs(playerActualGridPos.x - this.gridPosition.x) +
-//                             Mathf.Abs(playerActualGridPos.y - this.gridPosition.y);
+    protected virtual IEnumerator FlashColorFeedback(Color flashColor, float duration)
+    {
+        Color actualOriginalColor = originalColor;
+        sr.color = flashColor;
+        yield return new WaitForSeconds(duration);
+        sr.color = actualOriginalColor;
+    }
 
-//         bool playerInAttackZone = false;
+    public virtual void DefeatEnemy()
+    {
+        if (isDefeated) return;
+        isDefeated = true;
+        if (sr != null)
+        {
+            if (deadSprite != null)
+            {
+                sr.sprite = deadSprite;
+            }
+        }
 
+        HandleLootDrop();
 
-//         if (distanceToPlayer <= 2)
-//         {
-//             List<Vector2Int> currentAttackTiles = GetCurrentAttackPatternWorldPositions();
-//             playerHasBeenSpotted = true;
-//             turnsSincePlayerSpotted = 0;
+        GameManager.Instance?.EnemyDefeated();
+    }
 
-//             foreach (Vector2Int targetPosInPattern in currentAttackTiles)
-//             {
-//                 if (targetPosInPattern == playerActualGridPos)
-//                 {
-//                     playerInAttackZone = true;
-//                     break;
-//                 }
-//             }
+    protected virtual void HandleLootDrop()
+    {
+    }
 
-//             if (playerInAttackZone)
-//             {
-//                 player.TakeDamage(attackDamage);
-//             }
-//             else
-//             {
-//                 Vector2Int directionToPlayer = playerActualGridPos - this.gridPosition;
-//                 if (directionToPlayer != Vector2Int.zero)
-//                 {
-//                     if (Mathf.Abs(directionToPlayer.x) >= Mathf.Abs(directionToPlayer.y))
-//                     {
-//                         SetFacingDirection(new Vector2Int(System.Math.Sign(directionToPlayer.x), 0));
-//                     }
-//                     else
-//                     {
-//                         SetFacingDirection(new Vector2Int(0, System.Math.Sign(directionToPlayer.y)));
-//                     }
-//                 }
-//             }
-//         }
-//         else if (playerHasBeenSpotted)
-//         {
-//             turnsSincePlayerSpotted++;
-//         }
+    public bool IsDefeated() { return isDefeated; }
 
-//         if (!playerInAttackZone && playerHasBeenSpotted && turnsSincePlayerSpotted % 3 == 0)
-//         {
-//             AttemptMoveTowardsPlayer(playerActualGridPos, gameGrid);
-//             if (playerInAttackZone)
-//                 player.TakeDamage(attackDamage);
-//         }
-//     }
+    public override void OnPlayerEnter(Player player)
+    {
+        if (isDefeated || player == null) return;
+        player.TakeDamage(baseAttackDamage);
+    }
 
-//     protected virtual void AttemptMoveTowardsPlayer(Vector2Int playerPos, Tile[,] gameGrid)
-//     {
-//         if (GameManager.Instance == null) return;
+    public abstract void PerformAction(Player player, Vector2Int playerActualGridPos, Tile[,] gameGrid);
+    public abstract List<Vector2Int> GetRelativeAttackPattern();
+    public List<Vector2Int> GetCurrentAttackPatternWorldPositions()
+    {
+        List<Vector2Int> worldPositions = new List<Vector2Int>();
+        List<Vector2Int> relativePattern = GetRelativeAttackPattern();
+        foreach (Vector2Int relativePos in relativePattern)
+        {
+            worldPositions.Add(gridPosition + relativePos);
+        }
+        return worldPositions;
+    }
 
-//         Vector2Int moveDirection = Vector2Int.zero;
-//         int bestDist = int.MaxValue; 
+    protected bool CheckProximityAndTurn(Vector2Int playerPos, int detectionRange)
+    {
+        int distanceToPlayer = Mathf.Abs(playerPos.x - gridPosition.x) +
+                               Mathf.Abs(playerPos.y - gridPosition.y);
 
-//         Vector2Int[] directions = { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right };
-//         List<Vector2Int> possibleMoves = new();
+        if (distanceToPlayer <= detectionRange)
+        {
+            if (!playerHasBeenSpotted) Debug.Log($"{gameObject.name} spotted player!");
 
-//         foreach (Vector2Int dir in directions)
-//         {
-//             Vector2Int potentialNextPos = this.gridPosition + dir;
-//             if (GameManager.Instance.InBounds(potentialNextPos))
-//             {
-//                 Tile tileAtTarget = gameGrid[potentialNextPos.x, potentialNextPos.y];
-//                 int distToPlayer = Mathf.Abs(potentialNextPos.x - playerPos.x) + Mathf.Abs(potentialNextPos.y - playerPos.y);
-//                 if (distToPlayer < bestDist)
-//                 {
-//                     bestDist = distToPlayer;
-//                     possibleMoves.Clear();
-//                     possibleMoves.Add(dir);
-//                 }
-//                 else if (distToPlayer == bestDist)
-//                 {
-//                     possibleMoves.Add(dir);
-//                 }
-//             }
-//         }
+            playerHasBeenSpotted = true;
+            turnsSincePlayerSpotted = 0;
 
-//         if (possibleMoves.Count > 0)
-//         {
-//             moveDirection = possibleMoves[Random.Range(0, possibleMoves.Count)];
-//             GameManager.Instance.AttemptEnemyTileSwap(this, this.gameObject, moveDirection);
-//         }
-//     }
+            Vector2Int directionToPlayer = playerPos - gridPosition;
+            if (directionToPlayer != Vector2Int.zero)
+            {
+                if (Mathf.Abs(directionToPlayer.x) >= Mathf.Abs(directionToPlayer.y))
+                    SetFacingDirection(new Vector2Int(System.Math.Sign(directionToPlayer.x), 0));
+                else
+                    SetFacingDirection(new Vector2Int(0, System.Math.Sign(directionToPlayer.y)));
+            }
+            return true;
+        }
+        else if (playerHasBeenSpotted)
+        {
+            turnsSincePlayerSpotted++;
+        }
+        return false;
+    }
 
-//     public void DefeatEnemy()
-//     {
-//         if (isDefeated) return;
-//         isDefeated = true;
-//         if (sr != null) sr.color = Color.grey;
-//         GameManager.Instance?.EnemyDefeated();
-//         UpdateOriginalColor();
-//     }
+    protected virtual void AttemptMoveTowards(Vector2Int playerPos, Tile[,] gameGrid)
+    {
+        if (GameManager.Instance == null) return;
 
-//     public bool IsDefeated() { return isDefeated; }
+        Vector2Int bestMoveDir;
+        int minDistance = int.MaxValue;
+        List<Vector2Int> potentialMoveDirs = new List<Vector2Int>();
 
-//     public virtual List<Vector2Int> GetRelativeAttackPattern()
-//     {
-//         List<Vector2Int> pattern = new List<Vector2Int>();
-//         switch (attackPattern)
-//         {
-//             case AttackPatternType.ForwardLine:
-//                 for (int i = 1; i <= attackRange; i++)
-//                 {
-//                     pattern.Add(new Vector2Int(facingDirection.x * i, facingDirection.y * i));
-//                 }
-//                 break;
+        Vector2Int[] cardinalDirections = { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right };
+        foreach (Vector2Int dir in cardinalDirections)
+        {
+            Vector2Int nextPos = gridPosition + dir;
+            if (GameManager.Instance.InBounds(nextPos))
+            {
+                Tile tileAtNextPos = gameGrid[nextPos.x, nextPos.y];
+                int dist = Mathf.Abs(nextPos.x - playerPos.x) + Mathf.Abs(nextPos.y - playerPos.y);
+                if (dist < minDistance)
+                {
+                    minDistance = dist;
+                    potentialMoveDirs.Clear();
+                    potentialMoveDirs.Add(dir);
+                }
+                else if (dist == minDistance)
+                {
+                    potentialMoveDirs.Add(dir);
+                }
+            }
+        }
 
-//             case AttackPatternType.Cone:
-//                 pattern.Add(facingDirection);
-//                 if (attackRange >= 1)
-//                 {
-//                     Vector2Int perp1 = new(facingDirection.y, -facingDirection.x);
-//                     Vector2Int perp2 = new(-facingDirection.y, facingDirection.x);
-//                     pattern.Add(facingDirection + perp1);
-//                     pattern.Add(facingDirection + perp2);
-//                 }
-//                 break;
-
-//             case AttackPatternType.Adjacent:
-//                 pattern.Add(Vector2Int.up);
-//                 pattern.Add(Vector2Int.down);
-//                 pattern.Add(Vector2Int.left);
-//                 pattern.Add(Vector2Int.right);
-//                 break;
-//         }
-//         return pattern;
-//     }
-
-//     public List<Vector2Int> GetCurrentAttackPatternWorldPositions()
-//     {
-//         List<Vector2Int> worldPositions = new List<Vector2Int>();
-//         List<Vector2Int> relativePattern = GetRelativeAttackPattern();
-
-//         foreach (Vector2Int relativePos in relativePattern)
-//             worldPositions.Add(gridPosition + relativePos);
-
-//         return worldPositions;
-//     }
-
-//     private IEnumerator FlashColor(Color flashColor, float duration)
-//     {
-//         if (sr == null) yield break;
-//         Color actualOriginalColor = originalColor;
-
-//         sr.color = flashColor;
-//         yield return new WaitForSeconds(duration / 2);
-
-//         sr.color = actualOriginalColor;
-//         yield return new WaitForSeconds(duration / 2);
-
-//         if (!isDefeated) sr.color = actualOriginalColor; else sr.color = Color.grey;
-//     }
-    
-//     public void SetFacingDirection(Vector2Int newDirection)
-//     {
-//         if (newDirection != Vector2Int.zero)
-//         {
-//             facingDirection = newDirection;
-//         }
-//     }
-// }
+        if (potentialMoveDirs.Count > 0)
+        {
+            bestMoveDir = potentialMoveDirs[Random.Range(0, potentialMoveDirs.Count)];
+            GameManager.Instance.AttemptEnemyTileSwap(this, gameObject, bestMoveDir);
+        }
+    }
+}
