@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class MainMenuManager : MonoBehaviour
 {
@@ -9,20 +10,25 @@ public class MainMenuManager : MonoBehaviour
     [Header("Popup UI Elements")]
     public GameObject settingsPopup;
     public GameObject tutorialPopup;
+    public Button prevTutorialButton;
+    public Button nextTutorialButton;
+    public Image tutorialDisplayImage;
+    private int tutorialIndex = 0;
 
+    [Header("Tutorial Sprites")]
+    public Sprite[] tutorialPages;
     void Start()
     {
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
-        if (settingsPopup != null) settingsPopup.SetActive(false);
-        if (tutorialPopup != null) tutorialPopup.SetActive(false);
+        settingsPopup?.SetActive(false);
+        tutorialPopup?.SetActive(false);
     }
 
 
     public void OnNewGameButtonPressed()
     {
-        Debug.Log("New Game button pressed. Loading game scene...");
         if (!string.IsNullOrEmpty(gameSceneName))
         {
             SceneManager.LoadScene(gameSceneName);
@@ -31,49 +37,84 @@ public class MainMenuManager : MonoBehaviour
 
     public void OnSettingsButtonPressed()
     {
-        Debug.Log("Settings button pressed.");
         if (settingsPopup != null)
         {
             settingsPopup.SetActive(true);
-            if (tutorialPopup != null) tutorialPopup.SetActive(false);
+            tutorialPopup?.SetActive(false);
         }
     }
 
     public void OnTutorialButtonPressed()
     {
-        Debug.Log("Tutorial button pressed.");
-        if (tutorialPopup != null)
+        if (tutorialPopup != null && tutorialPages != null && tutorialPages.Length > 0)
         {
+            tutorialIndex = 0;
             tutorialPopup.SetActive(true);
-            if (settingsPopup != null) settingsPopup.SetActive(false);
+            DisplayTutorialPage();
+            UpdateButtonStates();
+
+            settingsPopup?.SetActive(false);
+        }
+    }
+
+    void DisplayTutorialPage()
+    {
+        if (tutorialDisplayImage != null && tutorialPages != null &&
+        tutorialIndex >= 0 && tutorialIndex < tutorialPages.Length)
+        {
+            tutorialDisplayImage.sprite = tutorialPages[tutorialIndex];
+        }
+    }
+
+    void UpdateButtonStates()
+    {
+        if (prevTutorialButton != null)
+        {
+            prevTutorialButton.interactable = tutorialIndex > 0;
+        }
+        if (nextTutorialButton != null && tutorialPages != null)
+        {
+            nextTutorialButton.interactable = tutorialIndex < tutorialPages.Length - 1;
+        }
+    }
+
+    public void OnNextTutorialPagePressed()
+    {
+        if (tutorialPages == null || tutorialPages.Length == 0) return;
+
+        if (tutorialIndex < tutorialPages.Length - 1)
+        {
+            tutorialIndex++;
+            DisplayTutorialPage();
+            UpdateButtonStates();
+        }
+    }
+
+    public void OnPrevTutorialPagePressed()
+    {
+        if (tutorialPages == null || tutorialPages.Length == 0) return;
+
+        if (tutorialIndex > 0)
+        {
+            tutorialIndex--;
+            DisplayTutorialPage();
+            UpdateButtonStates();
         }
     }
 
     public void CloseSettingsPopup()
     {
-        if (settingsPopup != null)
-        {
-            settingsPopup.SetActive(false);
-        }
+        settingsPopup?.SetActive(false);
     }
 
     public void CloseTutorialPopup()
     {
-        if (tutorialPopup != null)
-        {
-            tutorialPopup.SetActive(false);
-        }
+        tutorialPopup?.SetActive(false);
     }
 
     public void CloseActivePopup()
     {
-        if (settingsPopup != null && settingsPopup.activeSelf)
-        {
-            settingsPopup.SetActive(false);
-        }
-        else if (tutorialPopup != null && tutorialPopup.activeSelf)
-        {
-            tutorialPopup.SetActive(false);
-        }
+        settingsPopup?.SetActive(false);
+        tutorialPopup?.SetActive(false);
     }
 }

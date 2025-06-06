@@ -643,8 +643,6 @@ public class GameManager : MonoBehaviour
         GameObject goOfPlayerTile = tileGameObjects[currentPlayerTilePos_Grid.x, currentPlayerTilePos_Grid.y];
         GameObject goOfContentTile = tileGameObjects[targetContentTilePos_Grid.x, targetContentTilePos_Grid.y];
 
-        // LOGICAL SWAP
-
         grid[currentPlayerTilePos_Grid.x, currentPlayerTilePos_Grid.y] = contentTileToSwapWith;
         grid[targetContentTilePos_Grid.x, targetContentTilePos_Grid.y] = playerTileInstance;
 
@@ -660,8 +658,6 @@ public class GameManager : MonoBehaviour
             playerAttackFacingDirection = worldDirectionPlayerWantsToMove;
 
         ClearPlayerAttackAreaVisuals();
-
-        // ANIMATION
 
         Vector3 targetPosForPlayerTile = GridToWorldPosition(targetContentTilePos_Grid);
         Vector3 targetPosForContentTile = GridToWorldPosition(currentPlayerTilePos_Grid);
