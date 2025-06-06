@@ -49,9 +49,6 @@ public class TrollTile : EnemyTile
 
     protected override void HandleLootDrop()
     {
-        if (GameManager.Instance != null)
-        {
-            GameManager.Instance.ReplaceTileInGridDataAndVisuals(this.gridPosition, TileType.Key, GameManager.Instance.keyTilePrefab);
-        }
+        GameManager.Instance?.ReplaceTileInGridDataAndVisuals(this.gridPosition, TileType.Key, GameManager.Instance.keyTilePrefab);
     }
 }

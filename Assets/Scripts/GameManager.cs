@@ -24,14 +24,20 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
-        if (isGameOver)
+        if (Input.GetKeyDown(KeyCode.Escape))
         {
-            if (Input.GetKeyDown(KeyCode.R)) SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            SceneManager.LoadScene(mainMenuSceneName);
             return;
         }
 
-        HandleKeyOverrides();
+        if (Input.GetKeyDown(KeyCode.R)) {
+            SceneManager.LoadScene(gameSceneName);
+            return;
+        }
 
+        if (isGameOver) return;
+
+        HandleKeyOverrides();
         HandleKeyboardInput();
         HandleMouseInput();
 
@@ -41,6 +47,10 @@ public class GameManager : MonoBehaviour
     #endregion
 
     #region Unity Fields
+
+    [Header("Scene Names")]
+    public string gameSceneName = "Game";
+    public string mainMenuSceneName = "Menu";
 
     [Header("Grid Settings")]
     public float tileSize = 1.0f;
@@ -787,7 +797,7 @@ public class GameManager : MonoBehaviour
 
         if (currentFloor > targetFloorToWinGame)
         {
-            GameOver($"Victory!\nYou saved this retarded world.\nCongradulations.");
+            GameOver($"Congradulations!\nYou cleared the dungeon.\nYour score is: {currentScore}");
         }
         else
         {
@@ -887,10 +897,7 @@ public class GameManager : MonoBehaviour
     {
         foreach (Tile tile in currentlyHighlightedEnemyAttackTiles)
         {
-            if (tile != null)
-            {
-                tile.SetHighlight(false, attackHighlightColor);
-            }
+            tile?.SetHighlight(false, attackHighlightColor);
         }
         currentlyHighlightedEnemyAttackTiles.Clear();
     }

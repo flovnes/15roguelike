@@ -1,9 +1,12 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class Player : MonoBehaviour
 {
+    [HideInInspector] public Text healthText;
+
     public enum PlayerAttackMode
     {
         SwingLeft,
@@ -15,23 +18,31 @@ public class Player : MonoBehaviour
     public int currentHealth;
     public int attackDamage = 25;
 
-    [HideInInspector] public Text healthText;
 
     [Header("Attack Pattern State")]
     public PlayerAttackMode currentAttackMode = PlayerAttackMode.SwingLeft;
 
+    [Header("Damage Flash Settings")]
+    public Color healthTextDamageFlashColor = Color.red;
+    public Color originalColor;
+    public float healthTextFlashDuration = 0.3f;
+    private Coroutine healthFlashCoroutine;
+
     void Awake()
     {
+        
     }
 
     void Start()
     {
+        
     }
 
     public void ForceInitialHealthUIDisplayUpdate()
     {
         if (currentHealth == 0 && maxHealth > 0)
             currentHealth = maxHealth;
+        originalColor = healthText.color;
         UpdateHealthTextUI();
     }
 
@@ -39,13 +50,26 @@ public class Player : MonoBehaviour
     {
         currentHealth -= amount;
 
+        if (healthFlashCoroutine != null)
+        {
+            StopCoroutine(healthFlashCoroutine);
+        }
+        if (healthText != null)
+        {
+           healthFlashCoroutine = StartCoroutine(FlashHealthText());
+        }
+        else
+        {
+            UpdateHealthTextUI();
+        }
+
+
         if (currentHealth <= 0)
         {
             currentHealth = 0;
-            if (GameManager.Instance != null) GameManager.Instance.GameOver("You are Dead.");
+            UpdateHealthTextUI();
+            GameManager.Instance?.GameOver("You are Dead.");
         }
-        
-        UpdateHealthTextUI();
     }
 
     public void RestoreHealth(int amount)
@@ -64,6 +88,26 @@ public class Player : MonoBehaviour
         {
             healthText.text = $"{currentHealth}";
         }
+        healthText.color = originalColor;
+    }
+
+    private IEnumerator FlashHealthText()
+    {
+        if (healthText == null) yield break;
+
+        Color originalColor = healthText.color;
+
+        healthText.color = healthTextDamageFlashColor;
+        healthText.text = $"{currentHealth}";
+        yield return new WaitForSeconds(healthTextFlashDuration / 2);
+
+        healthText.color = originalColor;
+        yield return new WaitForSeconds(healthTextFlashDuration / 2);
+
+        healthText.color = originalColor;
+        healthText.text = $"{currentHealth}";
+
+        healthFlashCoroutine = null;
     }
 
     public void MoveToVisualPosition(Vector3 targetWorldPos)

@@ -311,7 +311,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -522, y: 482.34}
+  m_AnchoredPosition: {x: -581, y: 471}
   m_SizeDelta: {x: 155.5767, y: 242.152}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &479351343
@@ -335,8 +335,8 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_FontData:
-    m_Font: {fileID: 12800000, guid: 8f7578830df66b148987de4769a6bd1a, type: 3}
-    m_FontSize: 150
+    m_Font: {fileID: 12800000, guid: 258fb05d10a84204880593941a00ad54, type: 3}
+    m_FontSize: 100
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 1
@@ -347,7 +347,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: 1
+  m_Text: 12
 --- !u!222 &479351344
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -635,7 +635,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_FontData:
-    m_Font: {fileID: 12800000, guid: 8f7578830df66b148987de4769a6bd1a, type: 3}
+    m_Font: {fileID: 12800000, guid: 258fb05d10a84204880593941a00ad54, type: 3}
     m_FontSize: 70
     m_FontStyle: 0
     m_BestFit: 0
@@ -647,7 +647,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: 'score : 1000'
+  m_Text: 'score : 12034'
 --- !u!222 &707094280
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -792,6 +792,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d95052e412056c74caccb4f537121f7e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  gameSceneName: Game
+  mainMenuSceneName: Menu
   tileSize: 1.6
   minGridSize: 4
   maxGridSize: 7
@@ -804,7 +806,6 @@ MonoBehaviour:
   deerTilePrefab: {fileID: 6513591426574408682, guid: 36685f0534420324fb7d9c7a8f0f0c8e, type: 3}
   trollTilePrefab: {fileID: 6513591426574408682, guid: 01cfcc7ec6100834f93c3b79ab966983, type: 3}
   trapTilePrefab: {fileID: 6139867203772376192, guid: 5e82494b05409ef48997af480b160640, type: 3}
-  enemyTilePrefab: {fileID: 6513591426574408682, guid: aa737797b4f0dd744a0442db0aa816c6, type: 3}
   rockTilePrefab: {fileID: 7030032685487151741, guid: 9c85fae9c32e6c04ebbb15af334621cc, type: 3}
   boulderTilePrefab: {fileID: 7030032685487151741, guid: 6a1ae8432a610534191ff8dbc54c51df, type: 3}
   healthPickupPrefab: {fileID: 3338164246009121469, guid: 6545987676f268f4a99436fb9ce8d741, type: 3}
@@ -881,8 +882,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 902, y: 390}
-  m_SizeDelta: {x: 190.4995, y: 195.3604}
+  m_AnchoredPosition: {x: -533, y: 370}
+  m_SizeDelta: {x: 197.3563, y: 211.3598}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1071745368
 MonoBehaviour:
@@ -905,8 +906,8 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_FontData:
-    m_Font: {fileID: 12800000, guid: 8f7578830df66b148987de4769a6bd1a, type: 3}
-    m_FontSize: 100
+    m_Font: {fileID: 12800000, guid: 258fb05d10a84204880593941a00ad54, type: 3}
+    m_FontSize: 150
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 0
@@ -917,7 +918,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: 100
+  m_Text: 64
 --- !u!222 &1071745369
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -1071,7 +1072,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_FontData:
-    m_Font: {fileID: 12800000, guid: 8f7578830df66b148987de4769a6bd1a, type: 3}
+    m_Font: {fileID: 12800000, guid: 258fb05d10a84204880593941a00ad54, type: 3}
     m_FontSize: 80
     m_FontStyle: 0
     m_BestFit: 0
@@ -1126,8 +1127,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 686.87756, y: 380.00012}
-  m_SizeDelta: {x: 438.65, y: 98.7281}
+  m_AnchoredPosition: {x: -772, y: 370}
+  m_SizeDelta: {x: 493.5049, y: 137.04}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1874358899
 MonoBehaviour:
@@ -1150,8 +1151,8 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_FontData:
-    m_Font: {fileID: 12800000, guid: 8f7578830df66b148987de4769a6bd1a, type: 3}
-    m_FontSize: 60
+    m_Font: {fileID: 12800000, guid: 258fb05d10a84204880593941a00ad54, type: 3}
+    m_FontSize: 100
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 0
