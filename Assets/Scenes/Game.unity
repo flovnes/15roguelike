@@ -530,7 +530,7 @@ MonoBehaviour:
   m_Intensity: 1
   m_LightVolumeIntensity: 1
   m_LightVolumeEnabled: 0
-  m_ApplyToSortingLayers: 00000000
+  m_ApplyToSortingLayers: 000000001f400640cf2e052b2338fee7a7fe0cf2
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
   m_LightOrder: 0
@@ -819,7 +819,7 @@ MonoBehaviour:
   messageText: {fileID: 71046758}
   attackHighlightColor: {r: 1, g: 0.740566, b: 0.740566, a: 1}
   showAllAttackAreasKey: 308
-  enemyHitFlashColor: {r: 0.75, g: 0.8431629, b: 1, a: 1}
+  enemyHitFlashColor: {r: 0.5896226, g: 0.7435142, b: 1, a: 1}
   enemyHitFlashDuration: 0.2
   currentFloor: 0
   targetFloorToWinGame: 10
@@ -827,9 +827,14 @@ MonoBehaviour:
   scoreKillEnemy: 100
   scoreAdvanceLevel: 500
   scoreCollectKey: 250
-  scorePenaltyPerTurn: 10
+  scorePenaltyPerTurn: 50
   scoreDisplayUIText: {fileID: 707094279}
   playerAttackFacingDirection: {x: 0, y: 1}
+  hoverScaleMultiplier: 1.1
+  hoverScaleDuration: 0.1
+  maxDragTiltAngle: 20
+  dragTiltSpeedFactor: 1
+  dragTiltSmoothTime: 0.3
   swapAnimationDuration: 0.3
   enemySwapAnimationDuration: 0.2
   maxQueuedMoves: 1
@@ -985,8 +990,8 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
+  m_SortingLayerID: 1074151455
+  m_SortingLayer: 1
   m_SortingOrder: 0
   m_Sprite: {fileID: 448349025567289223, guid: 42e9f5d6f62aacb4b95115ee8c433791, type: 3}
   m_Color: {r: 0.7169812, g: 0.6912781, b: 0.65272343, a: 0.21176471}

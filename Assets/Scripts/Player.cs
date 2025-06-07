@@ -95,18 +95,11 @@ public class Player : MonoBehaviour
     {
         if (healthText == null) yield break;
 
-        Color originalColor = healthText.color;
-
         healthText.color = healthTextDamageFlashColor;
         healthText.text = $"{currentHealth}";
-        yield return new WaitForSeconds(healthTextFlashDuration / 2);
+        yield return new WaitForSeconds(healthTextFlashDuration);
 
         healthText.color = originalColor;
-        yield return new WaitForSeconds(healthTextFlashDuration / 2);
-
-        healthText.color = originalColor;
-        healthText.text = $"{currentHealth}";
-
         healthFlashCoroutine = null;
     }
 

@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using System.Collections.Generic;
 using System.Collections;
+using DG.Tweening;
 
 public class GameManager : MonoBehaviour
 {
@@ -37,11 +38,29 @@ public class GameManager : MonoBehaviour
 
         if (isGameOver) return;
 
+        Vector3 currentMouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        currentMouseWorldPos.z = 0;
+
         HandleKeyOverrides();
+
+        if (tileBeingDragged == null && !Input.GetMouseButton(0) && !swapAnimationActive)
+        {
+            HandleTileHover(currentMouseWorldPos);
+        }
+        else if (currentlyHoveredTileForVisuals != null && tileBeingDragged != null)
+        {
+            ClearHoverVisuals(currentlyHoveredTileForVisuals);
+            currentlyHoveredTileForVisuals = null;
+            hoveredEnemy = null;
+            UpdateAllHighlightDisplays();
+        }
+
+
         HandleKeyboardInput();
-        HandleMouseInput();
+        HandleMouseInput(currentMouseWorldPos);
 
         ProcessMoveQueue();
+        lastMouseWorldPos = currentMouseWorldPos;
     }
 
     #endregion
@@ -109,6 +128,15 @@ public class GameManager : MonoBehaviour
     [Header("Player Attack Settings")]
     public Vector2Int playerAttackFacingDirection = Vector2Int.up;
 
+    [Header("Hover Visuals")]
+    public float hoverScaleMultiplier = 1.1f;
+    public float hoverScaleDuration = 0.1f;
+
+    [Header("Drag Visuals")]
+    public float maxDragTiltAngle = 10f;
+    public float dragTiltSpeedFactor = 0.5f;
+    public float dragTiltSmoothTime = 0.1f;
+
     [Header("Animation Settings")]
     public float swapAnimationDuration = 0.25f;
     public float enemySwapAnimationDuration = 0.1f;
@@ -129,6 +157,9 @@ public class GameManager : MonoBehaviour
     private Vector2Int playerGridPos;
     private List<GameObject> currentPlayerAttackOutlineGOs = new List<GameObject>();
     private List<Tile> currentlyHighlightedEnemyAttackTiles = new List<Tile>();
+    private Tile currentlyHoveredTileForVisuals = null;
+    private Vector3 originalScaleHoveredTile;
+    private Tweener currentHoverScaleTween = null;
     private EnemyTile hoveredEnemy = null;
     private bool showAllHighlightsOverride = false;
     private Tile tileBeingDragged = null;
@@ -139,6 +170,8 @@ public class GameManager : MonoBehaviour
     private SpriteRenderer draggedTileSpriteRenderer;
     private bool isGameOver = false;
     private int activeEnemiesCount = 0;
+    private Vector3 lastMouseWorldPos;
+    private Tweener currentTiltTween = null;
 
     public bool IsAnimating() => swapAnimationActive;
     public bool HasKey() => hasKeyOnCurrentFloor;
@@ -146,6 +179,57 @@ public class GameManager : MonoBehaviour
     #endregion
 
     #region Input 
+
+    void HandleTileHover(Vector3 mouseWorldPos)
+    {
+        Vector2Int mouseGridPos = WorldToGridPosition(mouseWorldPos);
+        Tile tileUnderMouse = null;
+
+        if (InBounds(mouseGridPos))
+        {
+            tileUnderMouse = grid[mouseGridPos.x, mouseGridPos.y];
+        }
+
+        EnemyTile enemyForAttackAreaHighlight = null;
+        if (tileUnderMouse is EnemyTile enemy && !enemy.IsDefeated())
+        {
+            enemyForAttackAreaHighlight = enemy;
+        }
+
+        if (hoveredEnemy != enemyForAttackAreaHighlight)
+        {
+            hoveredEnemy = enemyForAttackAreaHighlight;
+            UpdateAllHighlightDisplays();
+        }
+
+        if (tileUnderMouse != null)
+        {
+            if (currentlyHoveredTileForVisuals != tileUnderMouse)
+            {
+                if (currentlyHoveredTileForVisuals != null)
+                {
+                    ClearHoverVisuals(currentlyHoveredTileForVisuals);
+                }
+
+                currentlyHoveredTileForVisuals = tileUnderMouse;
+                GameObject tileGO = tileGameObjects[tileUnderMouse.gridPosition.x, tileUnderMouse.gridPosition.y];
+                if (tileGO != null)
+                {
+                    originalScaleHoveredTile = tileGO.transform.localScale;
+                    DOTween.Kill(tileGO.transform, true);
+                    currentHoverScaleTween = tileGO.transform.DOScale(originalScaleHoveredTile * hoverScaleMultiplier, hoverScaleDuration).SetEase(Ease.OutQuad);
+                }
+            }
+        }
+        else
+        {
+            if (currentlyHoveredTileForVisuals != null)
+            {
+                ClearHoverVisuals(currentlyHoveredTileForVisuals);
+                currentlyHoveredTileForVisuals = null;
+            }
+        }
+    }
 
     void HandleKeyOverrides()
     {
@@ -197,49 +281,33 @@ public class GameManager : MonoBehaviour
             EnqueueMove(worldDirectionPlayerWantsToMove);
     }
 
-    void HandleMouseInput()
+    void HandleMouseInput(Vector3 mouseWorldPos)
     {
         if (swapAnimationActive && moveQueue.Count >= maxQueuedMoves && tileBeingDragged == null)
-            return;
-
-        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        mouseWorldPos.z = 0;
-        Vector2Int currentMouseGridPos = WorldToGridPosition(mouseWorldPos);
-
-        // Hover
-        if (tileBeingDragged == null && !Input.GetMouseButton(0) && !swapAnimationActive)
         {
-            EnemyTile previouslyHovered = hoveredEnemy;
-            hoveredEnemy = null;
-
-            if (InBounds(currentMouseGridPos))
-            {
-                Tile tileUnderMouse = grid[currentMouseGridPos.x, currentMouseGridPos.y];
-                if (tileUnderMouse is EnemyTile enemy && !enemy.IsDefeated())
-                {
-                    hoveredEnemy = enemy;
-                }
-            }
-
-            if (previouslyHovered != hoveredEnemy)
-                UpdateAllHighlightDisplays();
+            return;
         }
 
-        // Mouse Down. Start drag?
         if (Input.GetMouseButtonDown(0))
         {
             if (tileBeingDragged == null && (!swapAnimationActive || moveQueue.Count < maxQueuedMoves))
             {
-                if (InBounds(currentMouseGridPos))
+                Vector2Int clickedGridPos = WorldToGridPosition(mouseWorldPos);
+                if (InBounds(clickedGridPos))
                 {
-                    if (IsAdjacent(currentMouseGridPos, playerGridPos) && grid[currentMouseGridPos.x, currentMouseGridPos.y].type != TileType.Player)
+                    if (IsAdjacent(clickedGridPos, playerGridPos) && grid[clickedGridPos.x, clickedGridPos.y].type != TileType.Player)
                     {
-                        tileBeingDragged = grid[currentMouseGridPos.x, currentMouseGridPos.y];
-                        dragTileOriginalGridPos = currentMouseGridPos;
-                        visualTileBeingDragged = tileGameObjects[currentMouseGridPos.x, currentMouseGridPos.y];
+                        tileBeingDragged = grid[clickedGridPos.x, clickedGridPos.y];
+                        dragTileOriginalGridPos = clickedGridPos;
+                        visualTileBeingDragged = tileGameObjects[clickedGridPos.x, clickedGridPos.y];
 
                         if (visualTileBeingDragged != null)
                         {
+                            if (currentlyHoveredTileForVisuals != null)
+                            {
+                                ClearHoverVisuals(currentlyHoveredTileForVisuals);
+                                currentlyHoveredTileForVisuals = null;
+                            }
                             mouseOffsetFromTileCenter = visualTileBeingDragged.transform.position - mouseWorldPos;
                             draggedTileSpriteRenderer = visualTileBeingDragged.GetComponent<SpriteRenderer>();
                             if (draggedTileSpriteRenderer != null)
@@ -252,6 +320,7 @@ public class GameManager : MonoBehaviour
                                 hoveredEnemy = null;
                                 UpdateAllHighlightDisplays();
                             }
+                            if(currentTiltTween != null && currentTiltTween.IsActive()) currentTiltTween.Kill();
                         }
                         else { tileBeingDragged = null; }
                     }
@@ -259,42 +328,69 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        // keep dragging while down
+        // --- Mouse Button Held Down: Visual Drag & Tilt ---
         if (Input.GetMouseButton(0) && tileBeingDragged != null && visualTileBeingDragged != null)
         {
+            // Visual Drag
             visualTileBeingDragged.transform.position = mouseWorldPos + mouseOffsetFromTileCenter;
+
+            // Tilt Logic
+            Vector3 mouseVelocity = (mouseWorldPos - lastMouseWorldPos) / Time.deltaTime;
+            // We want to tilt around the Z-axis based on horizontal mouse movement (mouseVelocity.x)
+            // and around the X-axis (or Y for 2D look) based on vertical mouse movement (mouseVelocity.y)
+            // For a typical 2D top-down, tilt on Z axis based on X velocity is common for "sway"
+            // And tilt on X axis based on Y velocity for "pitch"
+
+            // Let's try Z-axis tilt based on X-velocity (sway left/right)
+            // And X-axis tilt based on negative Y-velocity (tilts forward if mouse moves up, backward if mouse moves down)
+            float targetZRotation = Mathf.Clamp(-mouseVelocity.x * dragTiltSpeedFactor, -maxDragTiltAngle, maxDragTiltAngle);
+            float targetXRotation = Mathf.Clamp(mouseVelocity.y * dragTiltSpeedFactor, -maxDragTiltAngle, maxDragTiltAngle); // Positive Y mouse up = tile tilts "back" (positive X rot)
+
+            // DOTween to smoothly rotate to the target tilt
+            // Kill previous tween to avoid conflicts if one is running
+            if(currentTiltTween != null && currentTiltTween.IsActive()) currentTiltTween.Kill(false); // false = don't complete
+
+            currentTiltTween = visualTileBeingDragged.transform.DORotate(
+                new Vector3(targetXRotation, 0, targetZRotation), // Y rotation is usually 0 for 2D sprites unless you want a "spin"
+                dragTiltSmoothTime
+            ).SetEase(Ease.OutQuad);
         }
 
-        // Mouse Up: try swap
+        // --- Mouse Button Up: Complete the drag & attempt to enqueue swap ---
         if (Input.GetMouseButtonUp(0))
         {
             if (tileBeingDragged != null && visualTileBeingDragged != null)
             {
-                bool canSwapFromDrop = IsDropValid(mouseWorldPos, dragTileOriginalGridPos, playerGridPos);
+                // Kill any ongoing tilt tween and tween back to zero rotation
+                if(currentTiltTween != null && currentTiltTween.IsActive()) currentTiltTween.Kill(false);
+                currentTiltTween = visualTileBeingDragged.transform.DORotate(Vector3.zero, swapAnimationDuration * 0.5f).SetEase(Ease.OutBack); // Faster snap back for rotation
 
+                // ... (rest of your existing MouseButtonUp logic for determining canSwapFromDrop, enqueueing, or snapping back position)
+                // The visualTileBeingDragged.transform.position for snapback is handled by AnimateSnapBackCoroutine
+                // The sorting order is handled by AnimateSnapBackCoroutine or AnimateSwapCoroutine
+                bool canSwapFromDrop = IsDropValid(mouseWorldPos, dragTileOriginalGridPos, playerGridPos);
                 if (canSwapFromDrop)
                 {
                     Vector2Int worldDirectionPlayerMoves = dragTileOriginalGridPos - playerGridPos;
-
                     if (moveQueue.Count < maxQueuedMoves)
+                    {
                         EnqueueMove(worldDirectionPlayerMoves);
+                        // The AnimateSwapCoroutine will place the visualTileBeingDragged at its final spot.
+                        // Its rotation should already be tweening to zero.
+                    }
                     else
-                        StartCoroutine(AnimateSnapBackCoroutine(visualTileBeingDragged,
-                            GridToWorldPosition(dragTileOriginalGridPos),
-                            draggedTileOriginalSortingOrder
-                        ));
+                    {
+                        // Queue full, snap back position
+                        StartCoroutine(AnimateSnapBackCoroutine(visualTileBeingDragged, GridToWorldPosition(dragTileOriginalGridPos), draggedTileOriginalSortingOrder));
+                    }
                 }
-                // drop not valid
-                else
+                else // Drop was not valid for a swap, animate snap back position
                 {
-                    StartCoroutine(AnimateSnapBackCoroutine(visualTileBeingDragged,
-                        GridToWorldPosition(dragTileOriginalGridPos),
-                        draggedTileOriginalSortingOrder
-                    ));
+                    StartCoroutine(AnimateSnapBackCoroutine(visualTileBeingDragged, GridToWorldPosition(dragTileOriginalGridPos), draggedTileOriginalSortingOrder));
                 }
 
                 tileBeingDragged = null;
-                visualTileBeingDragged = null;
+                visualTileBeingDragged = null; // These are reset, currentTiltTween will complete on its own or get killed if another drag starts on same object
                 draggedTileSpriteRenderer = null;
             }
         }
@@ -951,6 +1047,18 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    void ClearHoverVisuals(Tile tileToClear)
+    {
+        if (tileToClear == null) return;
+
+        GameObject tileGO = tileGameObjects[tileToClear.gridPosition.x, tileToClear.gridPosition.y];
+        if (tileGO != null)
+        {
+            DOTween.Kill(tileGO.transform, true);
+            currentHoverScaleTween = tileGO.transform.DOScale(originalScaleHoveredTile, hoverScaleDuration).SetEase(Ease.OutQuad);
+        }
+    }
+
     #endregion
 
     #region Animations
@@ -1025,6 +1133,9 @@ public class GameManager : MonoBehaviour
         if (tile2Sr != null) tile2Sr.sortingOrder = tile2OriginalOrder;
         if (playerSr != null) playerSr.sortingOrder = playerOriginalOrder;
 
+        tile1GO.transform.rotation = Quaternion.identity;
+        tile2GO.transform.rotation = Quaternion.identity;
+
         List<Tile> tilesHitByPlayer = PerformPlayerAttackAndGetHitTiles(playerNewGridPos_AttackOrigin);
         StartCoroutine(FlashHitTiles(tilesHitByPlayer, enemyHitFlashColor, enemyHitFlashDuration));
 
@@ -1048,7 +1159,7 @@ public class GameManager : MonoBehaviour
         {
             int floorBeforeInteraction = currentFloor;
             tileSwappedWithPlayer.OnPlayerEnter(playerController);
-            if (currentFloor > floorBeforeInteraction || (isGameOver && currentFloor > targetFloorToWinGame) )
+            if (currentFloor > floorBeforeInteraction || (isGameOver && currentFloor > targetFloorToWinGame))
             {
                 levelWasClearedThisTurn = true;
             }
@@ -1113,9 +1224,12 @@ public class GameManager : MonoBehaviour
         yield return null;
     }
 
-    private IEnumerator AnimateSnapBackCoroutine(GameObject tileGO, Vector3 targetPos, int originalOrder)
+    private IEnumerator AnimateSnapBackCoroutine(GameObject tileGO, Vector3 targetPos, int originalSortingOrderToRestore)
     {
         swapAnimationActive = true;
+        tileGO.transform.DORotate(Vector3.zero, swapAnimationDuration * 0.5f).SetEase(Ease.OutBack);
+
+
         float elapsedTime = 0f;
         Vector3 startPos = tileGO.transform.position;
         SpriteRenderer sr = tileGO.GetComponent<SpriteRenderer>();
@@ -1124,11 +1238,12 @@ public class GameManager : MonoBehaviour
         {
             elapsedTime += Time.deltaTime;
             float t = Mathf.Clamp01(elapsedTime / (swapAnimationDuration * 0.75f));
+            t = t * t * (3f - 2f * t);
             tileGO.transform.position = Vector3.Lerp(startPos, targetPos, t);
             yield return null;
         }
         tileGO.transform.position = targetPos;
-        if (sr != null) sr.sortingOrder = originalOrder;
+        if (sr != null) sr.sortingOrder = originalSortingOrderToRestore;
 
         swapAnimationActive = false;
         UpdateAllHighlightDisplays();
