@@ -798,9 +798,9 @@ MonoBehaviour:
   minGridSize: 4
   maxGridSize: 7
   floorsPerSizeIncrease: 2
-  numberOfEnemies: 2
+  numberOfEnemies: 0
   numberOfTraps: 1
-  numberOfHealthPickups: 1
+  numberOfHealthPickups: 3
   lizardTilePrefab: {fileID: 6513591426574408682, guid: 6fc1f7e5c27c25a488ae1410b9e1d63b, type: 3}
   rhinoTilePrefab: {fileID: 6513591426574408682, guid: 80c50b5447d12584ab9be27c60ec9892, type: 3}
   deerTilePrefab: {fileID: 6513591426574408682, guid: 36685f0534420324fb7d9c7a8f0f0c8e, type: 3}

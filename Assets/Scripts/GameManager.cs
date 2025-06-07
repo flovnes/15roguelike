@@ -78,9 +78,9 @@ public class GameManager : MonoBehaviour
     public int floorsPerSizeIncrease = 3;
 
     [Header("Random Level Settings")]
-    public int numberOfEnemies = 3;
+    public int numberOfEnemies = 1;
     public int numberOfTraps = 2;
-    public int numberOfHealthPickups = 1;
+    public int numberOfHealthPickups = 3;
 
     [Header("Prefabs")]
     public GameObject lizardTilePrefab;
@@ -114,7 +114,7 @@ public class GameManager : MonoBehaviour
     public int currentFloor = 1;
     public int targetFloorToWinGame = 3;
     public Text floorDisplayUIText;
-    private bool hasKeyOnCurrentFloor = false;
+    private bool hasKey = false;
     private Vector2Int currentLevelGoalPosition;
 
     [Header("Score System")]
@@ -174,7 +174,7 @@ public class GameManager : MonoBehaviour
     private Tweener currentTiltTween = null;
 
     public bool IsAnimating() => swapAnimationActive;
-    public bool HasKey() => hasKeyOnCurrentFloor;
+    public bool HasKey() => hasKey;
 
     #endregion
 
@@ -421,165 +421,184 @@ public class GameManager : MonoBehaviour
         if (Camera.main != null) Camera.main.orthographicSize = GetCameraOrthoSizeForGrid(currentDynamicGridSize);
 
         DestroyOldTilesAndClearArrays();
-
         grid = new Tile[currentDynamicGridSize, currentDynamicGridSize];
         tileGameObjects = new GameObject[currentDynamicGridSize, currentDynamicGridSize];
         activeEnemiesCount = 0;
-        hasKeyOnCurrentFloor = false;
+        hasKey = false;
         hoveredEnemy = null;
         tileBeingDragged = null;
         visualTileBeingDragged = null;
-
-        playerGridPos = new Vector2Int(0, 0);
-        currentLevelGoalPosition = new Vector2Int(currentDynamicGridSize - 1, currentDynamicGridSize - 1);
 
         for (int x = 0; x < currentDynamicGridSize; x++)
         {
             for (int y = 0; y < currentDynamicGridSize; y++)
             {
-                Vector2Int currentPos = new Vector2Int(x, y);
-                if (currentPos == playerGridPos || currentPos == currentLevelGoalPosition)
-                {
-                    SpawnTile(TileType.Empty, currentPos);
-                }
-                else
-                {
-                    float randEnv = Random.value;
-                    if (randEnv < 0.33f) SpawnTile(TileType.Environment, currentPos, rockTilePrefab);
-                    else if (randEnv < 0.66f) SpawnTile(TileType.Environment, currentPos, boulderTilePrefab);
-                    else SpawnTile(TileType.Empty, currentPos);
-                }
+                SpawnTile(TileType.Empty, new Vector2Int(x, y), emptyTilePrefab);
             }
         }
 
+        playerGridPos = new Vector2Int(currentDynamicGridSize / 2, currentDynamicGridSize / 2);
         ReplaceTileInGrid(playerGridPos, TileType.Player, playerTilePrefab);
-        if (playerGridPos != currentLevelGoalPosition)
+
+        List<Vector2Int> occupiedTiles = new() { playerGridPos };
+
+        int goalQuadrant = Random.Range(0, 4);
+        int keyQuadrant;
+        do {
+            keyQuadrant = Random.Range(0, 4);
+        } while (keyQuadrant == goalQuadrant || IsAdjacentQuadrant(goalQuadrant, keyQuadrant, currentDynamicGridSize));
+
+        currentLevelGoalPosition = GetRandomPositionInQuadrant(goalQuadrant, occupiedTiles);
+        ReplaceTileInGrid(currentLevelGoalPosition, TileType.Goal, goalTilePrefab);
+        occupiedTiles.Add(currentLevelGoalPosition);
+        if (grid[currentLevelGoalPosition.x, currentLevelGoalPosition.y] is GoalTile gt) gt.UpdateVisualState();
+
+        Vector2Int keyPosition = GetRandomPositionInQuadrant(keyQuadrant, occupiedTiles);
+        ReplaceTileInGrid(keyPosition, TileType.Key, keyTilePrefab);
+        occupiedTiles.Add(keyPosition);
+
+        int enemiesToPlace = GetScaledValue(numberOfEnemies, currentFloor, 1, 1, 0);
+        PlaceDynamicTiles(TileType.Enemy, enemiesToPlace, occupiedTiles, 2);
+
+        int trapsToPlace = GetScaledValue(numberOfTraps, currentFloor, 3, 1, 0);
+        PlaceDynamicTiles(TileType.Trap, trapsToPlace, occupiedTiles);
+
+        if (currentFloor % 3 == 2)
+        PlaceDynamicTiles(TileType.HealthPickup, 1, occupiedTiles);
+
+        float environmentFillDensity = Mathf.Min(0.15f + (currentFloor * 0.02f), 1f);
+
+        for (int x = 0; x < currentDynamicGridSize; x++)
         {
-            ReplaceTileInGrid(currentLevelGoalPosition, TileType.Goal, goalTilePrefab);
+            for (int y = 0; y < currentDynamicGridSize; y++)
+            {
+                Vector2Int currentPos = new(x, y);
+                if (Random.value < environmentFillDensity)
+                {
+                    if (!occupiedTiles.Contains(currentPos))
+                    {
+                        GameObject envPrefab = Random.value < 0.6f ? rockTilePrefab : boulderTilePrefab;
+                        ReplaceTileInGrid(currentPos, TileType.Environment, envPrefab);
+                    }
+                    // else Empty
+                }
+            }
         }
-        Tile goalInstance = grid[currentLevelGoalPosition.x, currentLevelGoalPosition.y];
-        if (goalInstance is GoalTile gt) gt.UpdateVisualState();
-
-        List<Vector2Int> forbiddenPlacementSpots = new List<Vector2Int> { playerGridPos, currentLevelGoalPosition };
-
-        bool isTrollFloor = currentFloor == targetFloorToWinGame;
-        if (!isTrollFloor)
-        {
-            PlaceKeyTile(forbiddenPlacementSpots);
-        }
-
-        int enemiesThisFloor = numberOfEnemies + ((currentDynamicGridSize - minGridSize) * 1);
-        if (isTrollFloor)
-        {
-            PlaceDynamicContent(TileType.Enemy, 1, forbiddenPlacementSpots);
-        }
-        else
-        {
-            PlaceDynamicContent(TileType.Enemy, enemiesThisFloor, forbiddenPlacementSpots);
-        }
-
-        int trapsThisFloor = numberOfTraps + ((currentDynamicGridSize - minGridSize) / 2);
-        PlaceDynamicContent(TileType.Trap, trapsThisFloor, forbiddenPlacementSpots);
-
-        int healthThisFloor = numberOfHealthPickups;
-        PlaceDynamicContent(TileType.HealthPickup, healthThisFloor, forbiddenPlacementSpots);
 
         SpawnPlayerVisual();
         UpdateFloorDisplay();
         UpdateAllHighlightDisplays();
     }
 
-    void PlaceKeyTile(List<Vector2Int> occupiedInitially)
+    int GetScaledValue(int baseValue, int floor, int interval, int amountPerInterval, int minValue)
     {
-        List<Vector2Int> possibleKeySpots = new List<Vector2Int>();
-        for (int x = 0; x < currentDynamicGridSize; x++)
-        {
-            for (int y = 0; y < currentDynamicGridSize; y++)
-            {
-                Vector2Int pos = new Vector2Int(x, y);
-                if (!occupiedInitially.Contains(pos) && (grid[x, y] == null || grid[x, y].type == TileType.Empty || grid[x, y] is EnvironmentTile))
-                {
-                    possibleKeySpots.Add(pos);
-                }
-            }
-        }
-
-        if (possibleKeySpots.Count > 0)
-        {
-            Vector2Int keyPos = possibleKeySpots[Random.Range(0, possibleKeySpots.Count)];
-            ReplaceTileInGrid(keyPos, TileType.Key, keyTilePrefab);
-            occupiedInitially.Add(keyPos);
-            Debug.Log($"Key placed at {keyPos}");
-        }
-        else
-        {
-            // ?? change later
-        }
+        int calculatedValue = baseValue + (floor / interval * amountPerInterval);
+        return Mathf.Max(minValue, calculatedValue);
     }
 
-    void PlaceDynamicContent(TileType typeToPlace, int count, List<Vector2Int> occupiedAndForbiddenSpots)
+    bool IsAdjacentQuadrant(int q1, int q2, int gridSize)
     {
-        int placedSuccessfully = 0;
-        int placementAttempts = 0;
-        int maxPlacementAttempts = currentDynamicGridSize * currentDynamicGridSize * 2;
+        if (gridSize < 5) return false; 
+        if (q1 == q2) return true;
 
-        List<Vector2Int> potentialSpots = new List<Vector2Int>();
+        if (q1 == 0 && (q2 == 1 || q2 == 3)) return true; // TR to TL BR
+        if (q1 == 1 && (q2 == 0 || q2 == 2)) return true; // TL to TR BL
+        if (q1 == 2 && (q2 == 1 || q2 == 3)) return true; // BL to TL BR
+        if (q1 == 3 && (q2 == 0 || q2 == 2)) return true; // BR to TR BL
+        return false;
+    }
+
+    Vector2Int GetRandomPositionInQuadrant(int quadrantIndex, List<Vector2Int> occupiedSpots)
+    {
+        int halfSize = currentDynamicGridSize / 2;
+        int attempts = 0;
+        Vector2Int pos;
+
+        int minX, maxX, minY, maxY;
+
+        switch (quadrantIndex)
+        {
+            case 0: // TR
+                minX = halfSize; maxX = currentDynamicGridSize - 1;
+                minY = halfSize; maxY = currentDynamicGridSize - 1;
+                break;
+            case 1: // TL
+                minX = 0; maxX = halfSize - 1;
+                minY = halfSize; maxY = currentDynamicGridSize - 1;
+                break;
+            case 2: // BL
+                minX = 0; maxX = halfSize - 1;
+                minY = 0; maxY = halfSize - 1;
+                break;
+            case 3: // BR
+            default:
+                minX = halfSize; maxX = currentDynamicGridSize - 1;
+                minY = 0; maxY = halfSize - 1;
+                break;
+        }
+
+        maxX = Mathf.Max(minX, maxX);
+        maxY = Mathf.Max(minY, maxY);
+
+        do {
+            pos = new Vector2Int(Random.Range(minX, maxX + 1), Random.Range(minY, maxY + 1));
+            attempts++;
+        } while (occupiedSpots.Contains(pos) && attempts < 50);
+
+        if (occupiedSpots.Contains(pos))
+        {
+            do {
+                pos = new Vector2Int(Random.Range(0, currentDynamicGridSize), Random.Range(0, currentDynamicGridSize));
+            } while (occupiedSpots.Contains(pos));
+        }
+        return pos;
+    }
+    
+    void PlaceDynamicTiles(
+        TileType typeToPlace, int count,
+        List<Vector2Int> occupiedSpots,
+        int minDistanceFromPlayer = 0)
+    {
+        int placed = 0;
+
+        List<Vector2Int> freeTiles = new List<Vector2Int>();
         for (int x = 0; x < currentDynamicGridSize; x++)
         {
             for (int y = 0; y < currentDynamicGridSize; y++)
             {
-                potentialSpots.Add(new Vector2Int(x, y));
+                Vector2Int currentPos = new Vector2Int(x, y);
+                if (!occupiedSpots.Contains(currentPos))
+                {
+                    freeTiles.Add(currentPos);
+                }
             }
         }
 
-        for (int i = 0; i < potentialSpots.Count; i++)
+        Debug.Log($"{freeTiles.Count} free spots left");
+        for (int i = 0; i < freeTiles.Count - 1; i++)
         {
-            Vector2Int temp = potentialSpots[i];
-            int randomIndex = Random.Range(i, potentialSpots.Count);
-            potentialSpots[i] = potentialSpots[randomIndex];
-            potentialSpots[randomIndex] = temp;
+            
+            int randomIndex = Random.Range(i, freeTiles.Count);
+            (freeTiles[randomIndex], freeTiles[i]) = (freeTiles[i], freeTiles[randomIndex]);
         }
 
-        foreach (Vector2Int randomPos in potentialSpots)
+        Debug.Log($"Placing {count} of {typeToPlace}");
+        foreach (var tile in freeTiles)
         {
-            if (placedSuccessfully >= count) break;
-            if (placementAttempts >= maxPlacementAttempts) break;
-            placementAttempts++;
+            if (placed >= count) break;
 
-            if (!occupiedAndForbiddenSpots.Contains(randomPos))
+            int distToPlayer = Mathf.Abs(tile.x - playerGridPos.x) + Mathf.Abs(tile.y - playerGridPos.y);
+            if (distToPlayer >= minDistanceFromPlayer)
             {
-                Tile existingTileAtSpot = grid[randomPos.x, randomPos.y];
-                if (existingTileAtSpot != null &&
-                    (existingTileAtSpot.type == TileType.Empty || existingTileAtSpot.type == TileType.Environment))
-                {
-                    GameObject prefabToSpawn = null;
+                GameObject prefabToUse = null;
+                prefabToUse = (typeToPlace == TileType.Enemy)
+                    ? GetEnemyPrefabForFloor(currentFloor)
+                    : GetPrefabForType(typeToPlace);
 
-                    if (typeToPlace == TileType.Enemy)
-                    {
-                        bool isTrollFloor = currentFloor == targetFloorToWinGame;
-                        if (isTrollFloor)
-                        {
-                            prefabToSpawn = trollTilePrefab;
-                        }
-                        else
-                        {
-                            prefabToSpawn = GetRegularEnemyPrefabForFloor(currentFloor);
-                        }
-                    }
-                    else
-                    {
-                        prefabToSpawn = GetPrefabForType(typeToPlace);
-                    }
-
-
-                    if (prefabToSpawn != null)
-                    {
-                        ReplaceTileInGrid(randomPos, typeToPlace, prefabToSpawn);
-                        occupiedAndForbiddenSpots.Add(randomPos);
-                        if (typeToPlace == TileType.Enemy) activeEnemiesCount++;
-                        placedSuccessfully++;
-                    }
-                }
+                Debug.Log($"Placing {typeToPlace} rn fr ong at {tile}");
+                ReplaceTileInGrid(tile, typeToPlace, prefabToUse);
+                occupiedSpots.Add(tile);
+                placed++;
             }
         }
     }
@@ -701,20 +720,22 @@ public class GameManager : MonoBehaviour
         currentlyHighlightedEnemyAttackTiles.Clear();
     }
 
-    GameObject GetRegularEnemyPrefabForFloor(int floor)
+    GameObject GetEnemyPrefabForFloor(int floor)
     {
         if (floor < 2) return lizardTilePrefab;
         if (floor < 4)
         {
-            return Random.value < 0.6f ? lizardTilePrefab : rhinoTilePrefab;
+            return Random.value < 0.7f ? lizardTilePrefab : rhinoTilePrefab;
         }
         if (floor < targetFloorToWinGame)
         {
             float rand = Random.value;
-            if (rand < 0.4f) return lizardTilePrefab;
-            if (rand < 0.75f) return rhinoTilePrefab;
+            if (rand < 0.5f) return lizardTilePrefab;
+            if (rand < 0.8f) return rhinoTilePrefab;
             return deerTilePrefab;
         }
+        
+        // unreachable??
         return lizardTilePrefab;
     }
 
@@ -912,7 +933,7 @@ public class GameManager : MonoBehaviour
 
     public void CollectKey()
     {
-        hasKeyOnCurrentFloor = true;
+        hasKey = true;
         currentScore += scoreCollectKey;
         UpdateScoreDisplay();
 
@@ -1360,17 +1381,17 @@ public class GameManager : MonoBehaviour
 
     GameObject GetPrefabForType(TileType type)
     {
-        switch (type)
+        return type switch
         {
-            case TileType.Empty: return emptyTilePrefab;
-            case TileType.Trap: return trapTilePrefab;
-            case TileType.HealthPickup: return healthPickupPrefab;
-            case TileType.Player: return playerTilePrefab;
-            case TileType.Goal: return goalTilePrefab;
-            case TileType.Key: return keyTilePrefab;
-            case TileType.Environment: return Random.value > 0.5f ? rockTilePrefab : boulderTilePrefab; //! fix later
-            default: return emptyTilePrefab;
-        }
+            TileType.Empty => emptyTilePrefab,
+            TileType.Trap => trapTilePrefab,
+            TileType.HealthPickup => healthPickupPrefab,
+            TileType.Player => playerTilePrefab,
+            TileType.Goal => goalTilePrefab,
+            TileType.Key => keyTilePrefab,
+            TileType.Environment => Random.value > 0.5f ? rockTilePrefab : boulderTilePrefab, //! fix later
+            _ => emptyTilePrefab,
+        };
     }
 
     #endregion
