@@ -486,11 +486,6 @@ public class GameManager : MonoBehaviour
                 }
             }
         }
-
-        if (placedSuccessfully < count)
-        {
-            Debug.LogWarning($"Could not place all {count} of {typeToPlace}. Placed {placedSuccessfully}. Grid might be full or no suitable spots left.");
-        }
     }
 
     Tile SpawnTile(TileType type, Vector2Int gridPos, GameObject specificPrefab = null)
@@ -634,22 +629,15 @@ public class GameManager : MonoBehaviour
     void AttemptSwap(Vector2Int worldDirectionPlayerWantsToMove)
     {
         if (swapAnimationActive) return;
-        if (playerController == null)
-        {
-            Debug.LogError("player is null. again");
-            return;
-        }
 
         Vector2Int currentPlayerTilePos_Grid = playerGridPos;
         Vector2Int targetContentTilePos_Grid = currentPlayerTilePos_Grid + worldDirectionPlayerWantsToMove;
 
         if (!InBounds(targetContentTilePos_Grid)) return;
 
-        // get scripts
         Tile playerTileInstance = grid[currentPlayerTilePos_Grid.x, currentPlayerTilePos_Grid.y];
         Tile contentTileToSwapWith = grid[targetContentTilePos_Grid.x, targetContentTilePos_Grid.y];
 
-        // save game onjects
         GameObject goOfPlayerTile = tileGameObjects[currentPlayerTilePos_Grid.x, currentPlayerTilePos_Grid.y];
         GameObject goOfContentTile = tileGameObjects[targetContentTilePos_Grid.x, targetContentTilePos_Grid.y];
 
