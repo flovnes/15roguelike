@@ -30,7 +30,6 @@ public class LizardmanTile : EnemyTile
             List<Vector2Int> attackTiles = GetCurrentAttackPatternWorldPositions();
             if (attackTiles.Contains(playerActualGridPos))
             {
-                Debug.Log($"{gameObject.name} at {gridPosition} attacks player for {performActionDamage} damage.");
                 player.TakeDamage(performActionDamage);
             }
             else

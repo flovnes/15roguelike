@@ -35,7 +35,6 @@ public class DeermanTile : EnemyTile
             List<Vector2Int> attackTiles = GetCurrentAttackPatternWorldPositions();
             if (attackTiles.Contains(playerActualGridPos))
             {
-                // Check for Line of Sight - no other enemies or blocking environment tiles in the way
                 bool clearShot = true;
                 Vector2Int currentCheckPos = this.gridPosition;
                 for (int i = 1; i <= 4; i++) 
@@ -53,10 +52,7 @@ public class DeermanTile : EnemyTile
                 }
 
                 if (clearShot)
-                {
-                    Debug.Log($"{gameObject.name} at {gridPosition} shoots player for {performActionDamage} damage.");
                     player.TakeDamage(performActionDamage);
-                }
             }
         }
     }

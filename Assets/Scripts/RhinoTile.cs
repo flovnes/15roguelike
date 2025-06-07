@@ -31,8 +31,6 @@ public class RhinomanTile : EnemyTile
         if (GameManager.Instance.IsAnimating()) return;
         actionTurnCounter++;
 
-        bool playerInProximity = CheckProximityAndTurn(playerActualGridPos, proximityDetectionRange);
-
         if (playerHasBeenSpotted && actionTurnCounter % 2 == 0)
         {
             List<Vector2Int> attackTiles = GetCurrentAttackPatternWorldPositions();
@@ -41,16 +39,13 @@ public class RhinomanTile : EnemyTile
             {
                 if (tilePos == playerActualGridPos)
                 {
-                    Debug.Log($"{gameObject.name} at {gridPosition} attacks player in cleave for {performActionDamage} damage.");
                     player.TakeDamage(performActionDamage);
                     playerHit = true;
                     break;
                 }
             }
             if (!playerHit)
-            {
                 AttemptMoveTowards(playerActualGridPos, gameGrid);
-            }
         }
     }
 }
