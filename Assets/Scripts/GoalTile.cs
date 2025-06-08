@@ -25,7 +25,7 @@ public class GoalTile : Tile
         originalColor = sr.color;
     }
 
-    public override void OnPlayerEnter(Player player)
+    public override void OnPlayerSwap(Player player)
     {
         if (GameManager.Instance == null || player == null) return;
 

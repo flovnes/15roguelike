@@ -126,7 +126,7 @@ public class GameManager : MonoBehaviour
     public Text scoreDisplayUIText;
 
     [Header("Player Attack Settings")]
-    public Vector2Int playerAttackFacingDirection = Vector2Int.up;
+    public Vector2Int playerFacing = Vector2Int.up;
 
     [Header("Hover Visuals")]
     public float hoverScaleMultiplier = 1.1f;
@@ -251,16 +251,13 @@ public class GameManager : MonoBehaviour
                 needsHighlightUpdate = true;
             }
         }
-        // continuous update while Alt is held (in case enemies move/die while Alt is held):
         else if (Input.GetKey(showAllAttackAreasKey) && !showAllHighlightsOverride)
         {
-            // This case is if GetKeyDown was missed but key is held
             showAllHighlightsOverride = true;
             needsHighlightUpdate = true;
         }
         else if (!Input.GetKey(showAllAttackAreasKey) && showAllHighlightsOverride)
         {
-            // This case is if GetKeyUp was missed but key is no longer held
             showAllHighlightsOverride = false;
             needsHighlightUpdate = true;
         }
@@ -328,46 +325,30 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        // --- Mouse Button Held Down: Visual Drag & Tilt ---
         if (Input.GetMouseButton(0) && tileBeingDragged != null && visualTileBeingDragged != null)
         {
-            // Visual Drag
             visualTileBeingDragged.transform.position = mouseWorldPos + mouseOffsetFromTileCenter;
 
-            // Tilt Logic
             Vector3 mouseVelocity = (mouseWorldPos - lastMouseWorldPos) / Time.deltaTime;
-            // We want to tilt around the Z-axis based on horizontal mouse movement (mouseVelocity.x)
-            // and around the X-axis (or Y for 2D look) based on vertical mouse movement (mouseVelocity.y)
-            // For a typical 2D top-down, tilt on Z axis based on X velocity is common for "sway"
-            // And tilt on X axis based on Y velocity for "pitch"
 
-            // Let's try Z-axis tilt based on X-velocity (sway left/right)
-            // And X-axis tilt based on negative Y-velocity (tilts forward if mouse moves up, backward if mouse moves down)
             float targetZRotation = Mathf.Clamp(-mouseVelocity.x * dragTiltSpeedFactor, -maxDragTiltAngle, maxDragTiltAngle);
-            float targetXRotation = Mathf.Clamp(mouseVelocity.y * dragTiltSpeedFactor, -maxDragTiltAngle, maxDragTiltAngle); // Positive Y mouse up = tile tilts "back" (positive X rot)
+            float targetXRotation = Mathf.Clamp(mouseVelocity.y * dragTiltSpeedFactor, -maxDragTiltAngle, maxDragTiltAngle);
 
-            // DOTween to smoothly rotate to the target tilt
-            // Kill previous tween to avoid conflicts if one is running
-            if(currentTiltTween != null && currentTiltTween.IsActive()) currentTiltTween.Kill(false); // false = don't complete
+            if(currentTiltTween != null && currentTiltTween.IsActive()) currentTiltTween.Kill(false);
 
             currentTiltTween = visualTileBeingDragged.transform.DORotate(
-                new Vector3(targetXRotation, 0, targetZRotation), // Y rotation is usually 0 for 2D sprites unless you want a "spin"
+                new Vector3(targetXRotation, 0, targetZRotation),
                 dragTiltSmoothTime
             ).SetEase(Ease.OutQuad);
         }
 
-        // --- Mouse Button Up: Complete the drag & attempt to enqueue swap ---
         if (Input.GetMouseButtonUp(0))
         {
             if (tileBeingDragged != null && visualTileBeingDragged != null)
             {
-                // Kill any ongoing tilt tween and tween back to zero rotation
                 if(currentTiltTween != null && currentTiltTween.IsActive()) currentTiltTween.Kill(false);
                 currentTiltTween = visualTileBeingDragged.transform.DORotate(Vector3.zero, swapAnimationDuration * 0.5f).SetEase(Ease.OutBack); // Faster snap back for rotation
 
-                // ... (rest of your existing MouseButtonUp logic for determining canSwapFromDrop, enqueueing, or snapping back position)
-                // The visualTileBeingDragged.transform.position for snapback is handled by AnimateSnapBackCoroutine
-                // The sorting order is handled by AnimateSnapBackCoroutine or AnimateSwapCoroutine
                 bool canSwapFromDrop = IsDropValid(mouseWorldPos, dragTileOriginalGridPos, playerGridPos);
                 if (canSwapFromDrop)
                 {
@@ -375,22 +356,19 @@ public class GameManager : MonoBehaviour
                     if (moveQueue.Count < maxQueuedMoves)
                     {
                         EnqueueMove(worldDirectionPlayerMoves);
-                        // The AnimateSwapCoroutine will place the visualTileBeingDragged at its final spot.
-                        // Its rotation should already be tweening to zero.
                     }
                     else
                     {
-                        // Queue full, snap back position
                         StartCoroutine(AnimateSnapBackCoroutine(visualTileBeingDragged, GridToWorldPosition(dragTileOriginalGridPos), draggedTileOriginalSortingOrder));
                     }
                 }
-                else // Drop was not valid for a swap, animate snap back position
+                else
                 {
                     StartCoroutine(AnimateSnapBackCoroutine(visualTileBeingDragged, GridToWorldPosition(dragTileOriginalGridPos), draggedTileOriginalSortingOrder));
                 }
 
                 tileBeingDragged = null;
-                visualTileBeingDragged = null; // These are reset, currentTiltTween will complete on its own or get killed if another drag starts on same object
+                visualTileBeingDragged = null;
                 draggedTileSpriteRenderer = null;
             }
         }
@@ -743,47 +721,47 @@ public class GameManager : MonoBehaviour
 
     #region Game Logic
 
-    void AttemptSwap(Vector2Int worldDirectionPlayerWantsToMove)
+    void AttemptSwap(Vector2Int moveDirection)
     {
         if (swapAnimationActive) return;
 
-        Vector2Int currentPlayerTilePos_Grid = playerGridPos;
-        Vector2Int targetContentTilePos_Grid = currentPlayerTilePos_Grid + worldDirectionPlayerWantsToMove;
+        Vector2Int playerTileGridPos = playerGridPos;
+        Vector2Int targetTileGridPos = playerTileGridPos + moveDirection;
 
-        if (!InBounds(targetContentTilePos_Grid)) return;
+        if (!InBounds(targetTileGridPos)) return;
 
-        Tile playerTileInstance = grid[currentPlayerTilePos_Grid.x, currentPlayerTilePos_Grid.y];
-        Tile contentTileToSwapWith = grid[targetContentTilePos_Grid.x, targetContentTilePos_Grid.y];
+        Tile playerTile = grid[playerTileGridPos.x, playerTileGridPos.y];
+        Tile targetTile = grid[targetTileGridPos.x, targetTileGridPos.y];
 
-        GameObject goOfPlayerTile = tileGameObjects[currentPlayerTilePos_Grid.x, currentPlayerTilePos_Grid.y];
-        GameObject goOfContentTile = tileGameObjects[targetContentTilePos_Grid.x, targetContentTilePos_Grid.y];
+        GameObject playerTileGO = tileGameObjects[playerTileGridPos.x, playerTileGridPos.y];
+        GameObject targetTileGO = tileGameObjects[targetTileGridPos.x, targetTileGridPos.y];
 
-        grid[currentPlayerTilePos_Grid.x, currentPlayerTilePos_Grid.y] = contentTileToSwapWith;
-        grid[targetContentTilePos_Grid.x, targetContentTilePos_Grid.y] = playerTileInstance;
+        grid[playerTileGridPos.x, playerTileGridPos.y] = targetTile;
+        grid[targetTileGridPos.x, targetTileGridPos.y] = playerTile;
 
-        playerTileInstance.gridPosition = targetContentTilePos_Grid;
-        contentTileToSwapWith.gridPosition = currentPlayerTilePos_Grid;
+        playerTile.gridPosition = targetTileGridPos;
+        targetTile.gridPosition = playerTileGridPos;
 
-        tileGameObjects[currentPlayerTilePos_Grid.x, currentPlayerTilePos_Grid.y] = goOfContentTile;
-        tileGameObjects[targetContentTilePos_Grid.x, targetContentTilePos_Grid.y] = goOfPlayerTile;
+        tileGameObjects[playerTileGridPos.x, playerTileGridPos.y] = targetTileGO;
+        tileGameObjects[targetTileGridPos.x, targetTileGridPos.y] = playerTileGO;
 
-        playerGridPos = targetContentTilePos_Grid;
+        playerGridPos = targetTileGridPos;
 
-        if (worldDirectionPlayerWantsToMove != Vector2Int.zero)
-            playerAttackFacingDirection = worldDirectionPlayerWantsToMove;
+        if (moveDirection != Vector2Int.zero)
+            playerFacing = moveDirection;
 
         ClearPlayerAttackAreaVisuals();
 
-        Vector3 targetPosForPlayerTile = GridToWorldPosition(targetContentTilePos_Grid);
-        Vector3 targetPosForContentTile = GridToWorldPosition(currentPlayerTilePos_Grid);
-        Vector3 targetPosForPlayerVisual = targetPosForPlayerTile;
-        if (playerGameObject) targetPosForPlayerVisual.z = playerGameObject.transform.position.z;
+        Vector3 finalPosPlayerTile = GridToWorldPosition(targetTileGridPos);
+        Vector3 finalPosTargetTile = GridToWorldPosition(playerTileGridPos);
+        Vector3 finalPosPlayerVisual = finalPosPlayerTile;
+        if (playerGameObject) finalPosPlayerVisual.z = playerGameObject.transform.position.z;
 
         StartCoroutine(AnimateSwapCoroutine(
-            goOfPlayerTile, targetPosForPlayerTile,
-            goOfContentTile, targetPosForContentTile,
-            playerGameObject, targetPosForPlayerVisual,
-            contentTileToSwapWith, playerGridPos
+            playerTileGO, finalPosPlayerTile,
+            targetTileGO, finalPosTargetTile,
+            playerGameObject, finalPosPlayerVisual,
+            targetTile, playerGridPos
         ));
     }
 
@@ -832,7 +810,7 @@ public class GameManager : MonoBehaviour
         List<Tile> hitTiles = new List<Tile>();
         if (playerController == null || isGameOver) return hitTiles;
 
-        List<Vector2Int> relativeAttackPattern = playerController.GetCurrentAttackPatternRelative(playerAttackFacingDirection);
+        List<Vector2Int> relativeAttackPattern = playerController.GetCurrentAttackPatternRelative(playerFacing);
 
         foreach (Vector2Int relativePos in relativeAttackPattern)
         {
@@ -1011,7 +989,7 @@ public class GameManager : MonoBehaviour
     {
         if (playerController == null || playerAttackOutlinePrefab == null) return;
 
-        List<Vector2Int> relativePattern = playerController.GetCurrentAttackPatternRelative(playerAttackFacingDirection);
+        List<Vector2Int> relativePattern = playerController.GetCurrentAttackPatternRelative(playerFacing);
         foreach (Vector2Int relativePos in relativePattern)
         {
             Vector2Int targetGridPos = playerGridPos + relativePos;
@@ -1115,7 +1093,7 @@ public class GameManager : MonoBehaviour
         List<GameObject> tempPreviewOutlines = new List<GameObject>();
         if (playerController != null && playerAttackOutlinePrefab != null)
         {
-            List<Vector2Int> previewPattern = playerController.GetCurrentAttackPatternRelative(playerAttackFacingDirection);
+            List<Vector2Int> previewPattern = playerController.GetCurrentAttackPatternRelative(playerFacing);
             foreach (Vector2Int relativePos in previewPattern)
             {
                 Vector2Int targetGridPos = playerNewGridPos_AttackOrigin + relativePos;
@@ -1135,8 +1113,7 @@ public class GameManager : MonoBehaviour
             elapsedTime += Time.deltaTime;
             float t = Mathf.Clamp01(elapsedTime / swapAnimationDuration);
 
-            t = 1f - (1f - t) * (1f - t);
-            // t = t * t * (3f - t * 2f);
+            t = t * t * (3f - t * 2f);
 
             tile1GO.transform.position = Vector3.Lerp(tile1StartPos, tile1FinalPos, t);
             tile2GO.transform.position = Vector3.Lerp(tile2StartPos, tile2FinalPos, t);
@@ -1179,7 +1156,7 @@ public class GameManager : MonoBehaviour
         if (canInteract && tileSwappedWithPlayer != null && !isGameOver)
         {
             int floorBeforeInteraction = currentFloor;
-            tileSwappedWithPlayer.OnPlayerEnter(playerController);
+            tileSwappedWithPlayer.OnPlayerSwap(playerController);
             if (currentFloor > floorBeforeInteraction || (isGameOver && currentFloor > targetFloorToWinGame))
             {
                 levelWasClearedThisTurn = true;

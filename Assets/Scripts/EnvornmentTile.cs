@@ -10,7 +10,7 @@ public abstract class EnvironmentTile : Tile
         type = TileType.Environment;
     }
 
-    public override void OnPlayerEnter(Player player)
+    public override void OnPlayerSwap(Player player)
     {
     }
 }

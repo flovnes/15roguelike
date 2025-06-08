@@ -36,7 +36,7 @@ public abstract class Tile : MonoBehaviour
         originalColor = sr.color;
     }
 
-    public virtual void OnPlayerEnter(Player player)
+    public virtual void OnPlayerSwap(Player player)
     {
     }
 

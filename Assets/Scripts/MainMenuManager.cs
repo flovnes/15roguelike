@@ -102,16 +102,6 @@ public class MainMenuManager : MonoBehaviour
         }
     }
 
-    public void CloseSettingsPopup()
-    {
-        settingsPopup?.SetActive(false);
-    }
-
-    public void CloseTutorialPopup()
-    {
-        tutorialPopup?.SetActive(false);
-    }
-
     public void CloseActivePopup()
     {
         settingsPopup?.SetActive(false);

@@ -20,7 +20,7 @@ public class TrapTile : Tile
         this.gameObject.name = $"Trap_Tile_{pos.x}_{pos.y}";
     }
 
-    public override void OnPlayerEnter(Player player)
+    public override void OnPlayerSwap(Player player)
     {
         if (!isActive || player == null) return;
 

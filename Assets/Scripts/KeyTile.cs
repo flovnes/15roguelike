@@ -16,7 +16,7 @@ public class KeyTile : Tile
         }
     }
 
-    public override void OnPlayerEnter(Player player)
+    public override void OnPlayerSwap(Player player)
     {
         if (GameManager.Instance == null || GameManager.Instance.HasKey()) return;
 

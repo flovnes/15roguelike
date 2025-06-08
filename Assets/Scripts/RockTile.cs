@@ -7,8 +7,8 @@ public class RockTile : EnvironmentTile
         this.gameObject.name = $"Rock_Tile_{pos.x}_{pos.y}";
         blocksLineOfSight = false;
     }
-    public override void OnPlayerEnter(Player player)
+    public override void OnPlayerSwap(Player player)
     {
-        base.OnPlayerEnter(player);
+        base.OnPlayerSwap(player);
     }
 }

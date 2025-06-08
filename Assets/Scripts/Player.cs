@@ -18,7 +18,6 @@ public class Player : MonoBehaviour
     public int currentHealth;
     public int attackDamage = 25;
 
-
     [Header("Attack Pattern State")]
     public PlayerAttackMode currentAttackMode = PlayerAttackMode.SwingLeft;
 

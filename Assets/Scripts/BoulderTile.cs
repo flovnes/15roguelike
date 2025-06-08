@@ -7,8 +7,8 @@ public class BoulderTile : EnvironmentTile
         gameObject.name = $"Boulder_Tile_{pos.x}_{pos.y}";
         blocksLineOfSight = true;
     }
-    public override void OnPlayerEnter(Player player)
+    public override void OnPlayerSwap(Player player)
     {
-        base.OnPlayerEnter(player);
+        base.OnPlayerSwap(player);
     }
 }

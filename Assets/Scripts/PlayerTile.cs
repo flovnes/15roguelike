@@ -7,13 +7,11 @@ public class PlayerTile : Tile
         base.Initialize(pos, tileType);
     }
 
-    public override void OnPlayerEnter(Player player)
+    public override void OnPlayerSwap(Player player)
     {
-        Debug.LogWarning("??");
     }
 
     public void OnSwappedByOther(Tile otherTile)
     {
-        // after enemy ai
     }
 }

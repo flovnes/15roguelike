@@ -8,7 +8,7 @@ public class EmptyTile : Tile
         gameObject.name = $"Empty_Tile_{pos.x}_{pos.y}";
     }
     
-    public override void OnPlayerEnter(Player player)
+    public override void OnPlayerSwap(Player player)
     {
     }
 }

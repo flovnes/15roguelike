@@ -99,7 +99,7 @@ public abstract class EnemyTile : Tile
 
     public bool IsDefeated() { return isDefeated; }
 
-    public override void OnPlayerEnter(Player player)
+    public override void OnPlayerSwap(Player player)
     {
         if (isDefeated || player == null) return;
         player.TakeDamage(baseAttackDamage);
