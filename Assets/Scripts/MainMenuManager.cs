@@ -10,6 +10,7 @@ public class MainMenuManager : MonoBehaviour
     [Header("Popup UI Elements")]
     public GameObject settingsPopup;
     public GameObject tutorialPopup;
+    public Button confirmButton;
     public Button prevTutorialButton;
     public Button nextTutorialButton;
     public Image tutorialDisplayImage;
@@ -75,6 +76,15 @@ public class MainMenuManager : MonoBehaviour
         if (nextTutorialButton != null && tutorialPages != null)
         {
             nextTutorialButton.interactable = tutorialIndex < tutorialPages.Length - 1;
+        }
+    }
+
+    public void OnConfirmRemoveMusicPressed()
+    {
+        if (confirmButton != null)
+        {
+            PersistentMusic.Instance.Mute();
+            confirmButton.interactable = false;
         }
     }
 

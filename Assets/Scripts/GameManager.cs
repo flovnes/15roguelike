@@ -31,7 +31,8 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        if (Input.GetKeyDown(KeyCode.R)) {
+        if (Input.GetKeyDown(KeyCode.R))
+        {
             SceneManager.LoadScene(gameSceneName);
             return;
         }
@@ -66,23 +67,15 @@ public class GameManager : MonoBehaviour
     #endregion
 
     #region Unity Fields
-
-    [Header("Scene Names")]
     public string gameSceneName = "Game";
     public string mainMenuSceneName = "Menu";
-
-    [Header("Grid Settings")]
     public float tileSize = 1.0f;
     public int minGridSize = 4;
     public int maxGridSize = 7;
     public int floorsPerSizeIncrease = 3;
-
-    [Header("Random Level Settings")]
     public int numberOfEnemies = 1;
     public int numberOfTraps = 2;
     public int numberOfHealthPickups = 3;
-
-    [Header("Prefabs")]
     public GameObject lizardTilePrefab;
     public GameObject rhinoTilePrefab;
     public GameObject deerTilePrefab;
@@ -97,52 +90,36 @@ public class GameManager : MonoBehaviour
     public GameObject goalTilePrefab;
     public GameObject keyTilePrefab;
     public GameObject playerAttackOutlinePrefab;
-
-    [Header("Scene UI References")]
     public Text scenePlayerHealthText;
     public Text messageText;
-
-    [Header("Enemy Attack Highlighting")]
+    public GameObject fullScreenFlashPanel;
+    public Color deathFlashColor = new Color(1f, 0f, 0f, 0.7f);
+    public Color winFlashColor = new Color(1f, 0.9f, 0.3f, 0.7f);
+    public float flashDuration = 0.5f;
     public Color attackHighlightColor = new Color(1f, 0.5f, 0.5f, 0.75f);
     public KeyCode showAllAttackAreasKey = KeyCode.LeftAlt;
-
-    [Header("Attack Highlighting")]
     public Color enemyHitFlashColor = Color.white;
     public float enemyHitFlashDuration = 0.15f;
-
-    [Header("Game Progression")]
     public int currentFloor = 1;
-    public int targetFloorToWinGame = 3;
+    public int finalFloor = 10;
     public Text floorDisplayUIText;
     private bool hasKey = false;
     private Vector2Int currentLevelGoalPosition;
-
-    [Header("Score System")]
     public int scoreKillEnemy = 100;
     public int scoreAdvanceLevel = 250;
     public int scoreCollectKey = 250;
-    public int scorePenaltyPerTurn = 10;
+    public int scorePenaltyPerTurn = 50;    
     private int currentScore = 0;
     public Text scoreDisplayUIText;
-
-    [Header("Player Attack Settings")]
     public Vector2Int playerFacing = Vector2Int.up;
-
-    [Header("Hover Visuals")]
     public float hoverScaleMultiplier = 1.1f;
     public float hoverScaleDuration = 0.1f;
-
-    [Header("Drag Visuals")]
     public float maxDragTiltAngle = 10f;
     public float dragTiltSpeedFactor = 0.5f;
     public float dragTiltSmoothTime = 0.1f;
-
-    [Header("Animation Settings")]
     public float swapAnimationDuration = 0.25f;
     public float enemySwapAnimationDuration = 0.1f;
     private bool swapAnimationActive = false;
-
-    [Header("Input Queue")]
     public int maxQueuedMoves = 2;
     private Queue<Vector2Int> moveQueue = new Queue<Vector2Int>();
 
@@ -317,7 +294,7 @@ public class GameManager : MonoBehaviour
                                 hoveredEnemy = null;
                                 UpdateAllHighlightDisplays();
                             }
-                            if(currentTiltTween != null && currentTiltTween.IsActive()) currentTiltTween.Kill();
+                            if (currentTiltTween != null && currentTiltTween.IsActive()) currentTiltTween.Kill();
                         }
                         else { tileBeingDragged = null; }
                     }
@@ -334,7 +311,7 @@ public class GameManager : MonoBehaviour
             float targetZRotation = Mathf.Clamp(-mouseVelocity.x * dragTiltSpeedFactor, -maxDragTiltAngle, maxDragTiltAngle);
             float targetXRotation = Mathf.Clamp(mouseVelocity.y * dragTiltSpeedFactor, -maxDragTiltAngle, maxDragTiltAngle);
 
-            if(currentTiltTween != null && currentTiltTween.IsActive()) currentTiltTween.Kill(false);
+            if (currentTiltTween != null && currentTiltTween.IsActive()) currentTiltTween.Kill(false);
 
             currentTiltTween = visualTileBeingDragged.transform.DORotate(
                 new Vector3(targetXRotation, 0, targetZRotation),
@@ -346,8 +323,8 @@ public class GameManager : MonoBehaviour
         {
             if (tileBeingDragged != null && visualTileBeingDragged != null)
             {
-                if(currentTiltTween != null && currentTiltTween.IsActive()) currentTiltTween.Kill(false);
-                currentTiltTween = visualTileBeingDragged.transform.DORotate(Vector3.zero, swapAnimationDuration * 0.5f).SetEase(Ease.OutBack); // Faster snap back for rotation
+                if (currentTiltTween != null && currentTiltTween.IsActive()) currentTiltTween.Kill(false);
+                currentTiltTween = visualTileBeingDragged.transform.DORotate(Vector3.zero, swapAnimationDuration * 0.5f).SetEase(Ease.OutBack);
 
                 bool canSwapFromDrop = IsDropValid(mouseWorldPos, dragTileOriginalGridPos, playerGridPos);
                 if (canSwapFromDrop)
@@ -422,7 +399,8 @@ public class GameManager : MonoBehaviour
 
         int goalQuadrant = Random.Range(0, 4);
         int keyQuadrant;
-        do {
+        do
+        {
             keyQuadrant = Random.Range(0, 4);
         } while (keyQuadrant == goalQuadrant || IsAdjacentQuadrant(goalQuadrant, keyQuadrant, currentDynamicGridSize));
 
@@ -431,18 +409,21 @@ public class GameManager : MonoBehaviour
         occupiedTiles.Add(currentLevelGoalPosition);
         if (grid[currentLevelGoalPosition.x, currentLevelGoalPosition.y] is GoalTile gt) gt.UpdateVisualState();
 
-        Vector2Int keyPosition = GetRandomPositionInQuadrant(keyQuadrant, occupiedTiles);
-        ReplaceTileInGrid(keyPosition, TileType.Key, keyTilePrefab);
-        occupiedTiles.Add(keyPosition);
+        if (currentFloor < finalFloor)
+        {
+            Vector2Int keyPosition = GetRandomPositionInQuadrant(keyQuadrant, occupiedTiles);
+            ReplaceTileInGrid(keyPosition, TileType.Key, keyTilePrefab);
+            occupiedTiles.Add(keyPosition);
+        }
 
-        int enemiesToPlace = GetScaledValue(numberOfEnemies, currentFloor, 1, 1, 0);
-        PlaceDynamicTiles(TileType.Enemy, enemiesToPlace, occupiedTiles, 2);
+        int enemiesToPlace = (currentFloor == finalFloor) ? 1 : GetScaledValue(numberOfEnemies, currentFloor, 1, 1, 0);
+        PlaceDynamicTiles(TileType.Enemy, enemiesToPlace, occupiedTiles, 1);
 
         int trapsToPlace = GetScaledValue(numberOfTraps, currentFloor, 3, 1, 0);
         PlaceDynamicTiles(TileType.Trap, trapsToPlace, occupiedTiles);
 
         if (currentFloor % 3 == 2)
-        PlaceDynamicTiles(TileType.HealthPickup, 1, occupiedTiles);
+            PlaceDynamicTiles(TileType.HealthPickup, 1, occupiedTiles);
 
         float environmentFillDensity = Mathf.Min(0.15f + (currentFloor * 0.02f), 1f);
 
@@ -476,7 +457,7 @@ public class GameManager : MonoBehaviour
 
     bool IsAdjacentQuadrant(int q1, int q2, int gridSize)
     {
-        if (gridSize < 5) return false; 
+        if (gridSize < 5) return false;
         if (q1 == q2) return true;
 
         if (q1 == 0 && (q2 == 1 || q2 == 3)) return true; // TR to TL BR
@@ -518,20 +499,22 @@ public class GameManager : MonoBehaviour
         maxX = Mathf.Max(minX, maxX);
         maxY = Mathf.Max(minY, maxY);
 
-        do {
+        do
+        {
             pos = new Vector2Int(Random.Range(minX, maxX + 1), Random.Range(minY, maxY + 1));
             attempts++;
         } while (occupiedSpots.Contains(pos) && attempts < 50);
 
         if (occupiedSpots.Contains(pos))
         {
-            do {
+            do
+            {
                 pos = new Vector2Int(Random.Range(0, currentDynamicGridSize), Random.Range(0, currentDynamicGridSize));
             } while (occupiedSpots.Contains(pos));
         }
         return pos;
     }
-    
+
     void PlaceDynamicTiles(
         TileType typeToPlace, int count,
         List<Vector2Int> occupiedSpots,
@@ -555,7 +538,7 @@ public class GameManager : MonoBehaviour
         Debug.Log($"{freeTiles.Count} free spots left");
         for (int i = 0; i < freeTiles.Count - 1; i++)
         {
-            
+
             int randomIndex = Random.Range(i, freeTiles.Count);
             (freeTiles[randomIndex], freeTiles[i]) = (freeTiles[i], freeTiles[randomIndex]);
         }
@@ -655,7 +638,7 @@ public class GameManager : MonoBehaviour
     public void ReplaceTileInGridDataAndVisuals(Vector2Int pos, TileType newType, GameObject specificPrefab = null)
     {
         if (!InBounds(pos)) return;
-        ReplaceTileInGrid(pos, newType, specificPrefab); // This already handles destroying old and spawning new
+        ReplaceTileInGrid(pos, newType, specificPrefab);
     }
 
     int GetGridSizeForFloor(int floor)
@@ -667,7 +650,7 @@ public class GameManager : MonoBehaviour
 
     float GetCameraOrthoSizeForGrid(int actualGridSize)
     {
-        float desiredHeight = (actualGridSize * tileSize) + (tileSize * 1.0f); // Grid height + 1 tile padding
+        float desiredHeight = (actualGridSize * tileSize) + (tileSize * 1.0f);
         return desiredHeight / 2.0f;
     }
 
@@ -705,15 +688,17 @@ public class GameManager : MonoBehaviour
         {
             return Random.value < 0.7f ? lizardTilePrefab : rhinoTilePrefab;
         }
-        if (floor < targetFloorToWinGame)
+        if (floor < finalFloor)
         {
             float rand = Random.value;
             if (rand < 0.5f) return lizardTilePrefab;
             if (rand < 0.8f) return rhinoTilePrefab;
             return deerTilePrefab;
         }
-        
-        // unreachable??
+        if (floor == finalFloor)
+        {
+            return trollTilePrefab;
+        }
         return lizardTilePrefab;
     }
 
@@ -863,6 +848,9 @@ public class GameManager : MonoBehaviour
     {
         if (isGameOver) return;
         isGameOver = true;
+
+        StartCoroutine(FlashScreen(message.Contains("Congradulations!") ? winFlashColor : deathFlashColor));
+
         if (messageText != null)
         {
             messageText.text = $"{message}\nPress 'R' to restart.";
@@ -878,7 +866,7 @@ public class GameManager : MonoBehaviour
 
         currentFloor++;
 
-        if (currentFloor > targetFloorToWinGame)
+        if (currentFloor > finalFloor)
         {
             GameOver($"Congradulations!\nYou cleared the dungeon.\nYour score is: {currentScore}");
         }
@@ -1134,6 +1122,8 @@ public class GameManager : MonoBehaviour
         tile1GO.transform.rotation = Quaternion.identity;
         tile2GO.transform.rotation = Quaternion.identity;
 
+        currentScore -= scorePenaltyPerTurn;
+
         List<Tile> tilesHitByPlayer = PerformPlayerAttackAndGetHitTiles(playerNewGridPos_AttackOrigin);
         StartCoroutine(FlashHitTiles(tilesHitByPlayer, enemyHitFlashColor, enemyHitFlashDuration));
 
@@ -1157,7 +1147,7 @@ public class GameManager : MonoBehaviour
         {
             int floorBeforeInteraction = currentFloor;
             tileSwappedWithPlayer.OnPlayerSwap(playerController);
-            if (currentFloor > floorBeforeInteraction || (isGameOver && currentFloor > targetFloorToWinGame))
+            if (currentFloor > floorBeforeInteraction || (isGameOver && currentFloor > finalFloor))
             {
                 levelWasClearedThisTurn = true;
             }
@@ -1269,7 +1259,7 @@ public class GameManager : MonoBehaviour
 
         if (originalTileColors.Count > 0)
         {
-            yield return new WaitForSeconds(duration/2);
+            yield return new WaitForSeconds(duration / 2);
             foreach (KeyValuePair<SpriteRenderer, Color> entry in originalTileColors)
             {
                 if (entry.Key != null)
@@ -1369,6 +1359,29 @@ public class GameManager : MonoBehaviour
             TileType.Environment => Random.value > 0.5f ? rockTilePrefab : boulderTilePrefab, //! fix later
             _ => emptyTilePrefab,
         };
+    }
+
+    private IEnumerator FlashScreen(Color flashColor)
+    {
+        if (fullScreenFlashPanel == null) yield break;
+
+        Image panelImage = fullScreenFlashPanel.GetComponent<Image>();
+        if (panelImage == null) yield break;
+
+        fullScreenFlashPanel.SetActive(true);
+        panelImage.color = flashColor;
+
+        float elapsedTime = 0f;
+        Color transparentColor = new Color(flashColor.r, flashColor.g, flashColor.b, 0f);
+        while (elapsedTime < flashDuration)
+        {
+            elapsedTime += Time.deltaTime;
+            panelImage.color = Color.Lerp(flashColor, transparentColor, elapsedTime / flashDuration);
+            yield return null;
+        }
+        
+        panelImage.color = transparentColor;
+        fullScreenFlashPanel.SetActive(false);
     }
 
     #endregion

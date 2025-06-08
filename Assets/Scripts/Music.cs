@@ -5,8 +5,8 @@ public class PersistentMusic : MonoBehaviour
     public static PersistentMusic Instance { get; private set; }
     private AudioSource audioSource;
 
-    public static string VolumePlayerPrefsKey = "GameMasterVolume";
-    public float defaultVolume = 0.5f;
+    public float unmutedVolume = 0.4f;
+    private bool isMuted = false;
 
     void Awake()
     {
@@ -16,14 +16,21 @@ public class PersistentMusic : MonoBehaviour
             DontDestroyOnLoad(gameObject);
 
             audioSource = GetComponent<AudioSource>();
-            if (audioSource != null)
-            {
-                audioSource.volume = PlayerPrefs.GetFloat(VolumePlayerPrefsKey, defaultVolume);
-            }
+            audioSource.volume = unmutedVolume;
+            isMuted = false;
         }
-        else if (Instance != this)
+        else
         {
             Destroy(gameObject);
+        }
+    }
+
+    public void Mute()
+    {
+        if (!isMuted)
+        {
+            audioSource.volume = 0f;
+            isMuted = true;
         }
     }
 }
