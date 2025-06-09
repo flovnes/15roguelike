@@ -46,8 +46,8 @@ EnvironmentTile : + blocksLoS
 
 EnvironmentTile : + Initialize()
 EnvironmentTile : + OnPlayerSwap()
-EnemyTile : + health
-EnemyTile : + attackDamage
+EnemyTile : - health
+EnemyTile : - attackDamage
 EnemyTile : # attackPattern
 EnemyTile : + Initialize()
 EnemyTile : + OnPlayerSwap()
@@ -55,10 +55,10 @@ EnemyTile : + PerformAction()
 EnemyTile : + TakeDamage()
 PlayerTile : + OnPlayerSwap()
 PlayerTile : + OnSwappedByOther()
-HealthPickupTile : + healthRestore
+HealthPickupTile : - healthRestore
 HealthPickupTile : - isConsumed
 HealthPickupTile : + OnPlayerSwap()
 EmptyTile : + OnPlayerSwap()
-TrapTile : + damage
+TrapTile : - damage
 TrapTile : + OnPlayerSwap()
 @enduml

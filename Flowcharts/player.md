@@ -11,10 +11,11 @@ skinparam classAttributeIconSize 0
 skinparam style strictuml
 
 class Player {
-  - health
+  - maxHealth
+  # currentHealth 
   - attackDamage
   - direction
-  # currentAttackMode
+  # currentAttackPattern
   + Initialize()
   + cycleAttackPattern()
   + takeDamage()

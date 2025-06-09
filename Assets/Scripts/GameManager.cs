@@ -128,7 +128,7 @@ public class GameManager : MonoBehaviour
     #region State Variables
     private Tile[,] grid;
     private GameObject[,] tileGameObjects;
-    private int currentDynamicGridSize;
+    private int gridSize;
     private Player playerController;
     private GameObject playerGameObject;
     private Vector2Int playerGridPos;
@@ -372,27 +372,27 @@ public class GameManager : MonoBehaviour
 
     void GenerateLevel()
     {
-        currentDynamicGridSize = GetGridSizeForFloor(currentFloor);
-        if (Camera.main != null) Camera.main.orthographicSize = GetCameraOrthoSizeForGrid(currentDynamicGridSize);
+        gridSize = GetGridSizeForFloor(currentFloor);
+        if (Camera.main != null) Camera.main.orthographicSize = EvalCameraSize(gridSize);
 
         DestroyOldTilesAndClearArrays();
-        grid = new Tile[currentDynamicGridSize, currentDynamicGridSize];
-        tileGameObjects = new GameObject[currentDynamicGridSize, currentDynamicGridSize];
+        grid = new Tile[gridSize, gridSize];
+        tileGameObjects = new GameObject[gridSize, gridSize];
         activeEnemiesCount = 0;
         hasKey = false;
         hoveredEnemy = null;
         tileBeingDragged = null;
         visualTileBeingDragged = null;
 
-        for (int x = 0; x < currentDynamicGridSize; x++)
+        for (int x = 0; x < gridSize; x++)
         {
-            for (int y = 0; y < currentDynamicGridSize; y++)
+            for (int y = 0; y < gridSize; y++)
             {
                 SpawnTile(TileType.Empty, new Vector2Int(x, y), emptyTilePrefab);
             }
         }
 
-        playerGridPos = new Vector2Int(currentDynamicGridSize / 2, currentDynamicGridSize / 2);
+        playerGridPos = new Vector2Int(gridSize / 2, gridSize / 2);
         ReplaceTileInGrid(playerGridPos, TileType.Player, playerTilePrefab);
 
         List<Vector2Int> occupiedTiles = new() { playerGridPos };
@@ -402,7 +402,7 @@ public class GameManager : MonoBehaviour
         do
         {
             keyQuadrant = Random.Range(0, 4);
-        } while (keyQuadrant == goalQuadrant || IsAdjacentQuadrant(goalQuadrant, keyQuadrant, currentDynamicGridSize));
+        } while (keyQuadrant == goalQuadrant || IsAdjacentQuadrant(goalQuadrant, keyQuadrant, gridSize));
 
         currentLevelGoalPosition = GetRandomPositionInQuadrant(goalQuadrant, occupiedTiles);
         ReplaceTileInGrid(currentLevelGoalPosition, TileType.Goal, goalTilePrefab);
@@ -427,9 +427,9 @@ public class GameManager : MonoBehaviour
 
         float environmentFillDensity = Mathf.Min(0.15f + (currentFloor * 0.02f), 1f);
 
-        for (int x = 0; x < currentDynamicGridSize; x++)
+        for (int x = 0; x < gridSize; x++)
         {
-            for (int y = 0; y < currentDynamicGridSize; y++)
+            for (int y = 0; y < gridSize; y++)
             {
                 Vector2Int currentPos = new(x, y);
                 if (Random.value < environmentFillDensity)
@@ -469,7 +469,7 @@ public class GameManager : MonoBehaviour
 
     Vector2Int GetRandomPositionInQuadrant(int quadrantIndex, List<Vector2Int> occupiedSpots)
     {
-        int halfSize = currentDynamicGridSize / 2;
+        int halfSize = gridSize / 2;
         int attempts = 0;
         Vector2Int pos;
 
@@ -478,12 +478,12 @@ public class GameManager : MonoBehaviour
         switch (quadrantIndex)
         {
             case 0: // TR
-                minX = halfSize; maxX = currentDynamicGridSize - 1;
-                minY = halfSize; maxY = currentDynamicGridSize - 1;
+                minX = halfSize; maxX = gridSize - 1;
+                minY = halfSize; maxY = gridSize - 1;
                 break;
             case 1: // TL
                 minX = 0; maxX = halfSize - 1;
-                minY = halfSize; maxY = currentDynamicGridSize - 1;
+                minY = halfSize; maxY = gridSize - 1;
                 break;
             case 2: // BL
                 minX = 0; maxX = halfSize - 1;
@@ -491,7 +491,7 @@ public class GameManager : MonoBehaviour
                 break;
             case 3: // BR
             default:
-                minX = halfSize; maxX = currentDynamicGridSize - 1;
+                minX = halfSize; maxX = gridSize - 1;
                 minY = 0; maxY = halfSize - 1;
                 break;
         }
@@ -509,7 +509,7 @@ public class GameManager : MonoBehaviour
         {
             do
             {
-                pos = new Vector2Int(Random.Range(0, currentDynamicGridSize), Random.Range(0, currentDynamicGridSize));
+                pos = new Vector2Int(Random.Range(0, gridSize), Random.Range(0, gridSize));
             } while (occupiedSpots.Contains(pos));
         }
         return pos;
@@ -523,9 +523,9 @@ public class GameManager : MonoBehaviour
         int placed = 0;
 
         List<Vector2Int> freeTiles = new List<Vector2Int>();
-        for (int x = 0; x < currentDynamicGridSize; x++)
+        for (int x = 0; x < gridSize; x++)
         {
-            for (int y = 0; y < currentDynamicGridSize; y++)
+            for (int y = 0; y < gridSize; y++)
             {
                 Vector2Int currentPos = new Vector2Int(x, y);
                 if (!occupiedSpots.Contains(currentPos))
@@ -607,7 +607,7 @@ public class GameManager : MonoBehaviour
                 newPlayerControllerInstance.currentHealth = playerController.currentHealth;
                 newPlayerControllerInstance.maxHealth = playerController.maxHealth;
                 newPlayerControllerInstance.attackDamage = playerController.attackDamage;
-                newPlayerControllerInstance.currentAttackMode = playerController.currentAttackMode;
+                newPlayerControllerInstance.currentAttackPattern = playerController.currentAttackPattern;
             }
             else
             {
@@ -648,7 +648,7 @@ public class GameManager : MonoBehaviour
         return Mathf.Min(calculatedSize, maxGridSize);
     }
 
-    float GetCameraOrthoSizeForGrid(int actualGridSize)
+    float EvalCameraSize(int actualGridSize)
     {
         float desiredHeight = (actualGridSize * tileSize) + (tileSize * 1.0f);
         return desiredHeight / 2.0f;
@@ -811,7 +811,7 @@ public class GameManager : MonoBehaviour
                 }
             }
         }
-        playerController.CycleAttackMode();
+        playerController.CycleAttackPattern();
         return hitTiles;
     }
 
@@ -819,9 +819,9 @@ public class GameManager : MonoBehaviour
     {
         if (isGameOver || playerController == null) return;
 
-        for (int x = 0; x < currentDynamicGridSize; x++)
+        for (int x = 0; x < gridSize; x++)
         {
-            for (int y = 0; y < currentDynamicGridSize; y++)
+            for (int y = 0; y < gridSize; y++)
             {
                 if (grid[x, y] is EnemyTile enemyTile)
                 {
@@ -879,9 +879,9 @@ public class GameManager : MonoBehaviour
 
     void ClearBoardForNewLevel()
     {
-        for (int x = 0; x < currentDynamicGridSize; x++)
+        for (int x = 0; x < gridSize; x++)
         {
-            for (int y = 0; y < currentDynamicGridSize; y++)
+            for (int y = 0; y < gridSize; y++)
             {
                 if (tileGameObjects[x, y] != null)
                 {
@@ -923,7 +923,6 @@ public class GameManager : MonoBehaviour
             currentScore = 0;
         }
         UpdateScoreDisplay();
-        Debug.Log($"Turn penalty applied. Score: {currentScore}");
     }
 
     #endregion
@@ -1014,9 +1013,9 @@ public class GameManager : MonoBehaviour
 
     void HighlightAllEnemyAttackAreas()
     {
-        for (int x = 0; x < currentDynamicGridSize; x++)
+        for (int x = 0; x < gridSize; x++)
         {
-            for (int y = 0; y < currentDynamicGridSize; y++)
+            for (int y = 0; y < gridSize; y++)
             {
                 if (grid[x, y] is EnemyTile enemy && !enemy.IsDefeated())
                 {
@@ -1122,7 +1121,7 @@ public class GameManager : MonoBehaviour
         tile1GO.transform.rotation = Quaternion.identity;
         tile2GO.transform.rotation = Quaternion.identity;
 
-        currentScore -= scorePenaltyPerTurn;
+        ApplyTurnPenalty();
 
         List<Tile> tilesHitByPlayer = PerformPlayerAttackAndGetHitTiles(playerNewGridPos_AttackOrigin);
         StartCoroutine(FlashHitTiles(tilesHitByPlayer, enemyHitFlashColor, enemyHitFlashDuration));
@@ -1276,15 +1275,15 @@ public class GameManager : MonoBehaviour
 
     public Vector3 GridToWorldPosition(Vector2Int gridPos)
     {
-        float worldX = (gridPos.x - (currentDynamicGridSize - 1) / 2.0f) * tileSize;
-        float worldY = (gridPos.y - (currentDynamicGridSize - 1) / 2.0f) * tileSize;
+        float worldX = (gridPos.x - (gridSize - 1) / 2.0f) * tileSize;
+        float worldY = (gridPos.y - (gridSize - 1) / 2.0f) * tileSize;
         return new Vector3(worldX, worldY, 0);
     }
 
     public Vector2Int WorldToGridPosition(Vector3 worldPos)
     {
-        float centerX_grid = (currentDynamicGridSize - 1) / 2.0f;
-        float centerY_grid = (currentDynamicGridSize - 1) / 2.0f;
+        float centerX_grid = (gridSize - 1) / 2.0f;
+        float centerY_grid = (gridSize - 1) / 2.0f;
 
         int gridX = Mathf.RoundToInt(worldPos.x / tileSize + centerX_grid);
         int gridY = Mathf.RoundToInt(worldPos.y / tileSize + centerY_grid);
@@ -1293,8 +1292,8 @@ public class GameManager : MonoBehaviour
 
     public bool InBounds(Vector2Int gridPos)
     {
-        return gridPos.x >= 0 && gridPos.x < currentDynamicGridSize &&
-               gridPos.y >= 0 && gridPos.y < currentDynamicGridSize;
+        return gridPos.x >= 0 && gridPos.x < gridSize &&
+               gridPos.y >= 0 && gridPos.y < gridSize;
     }
 
     bool IsAdjacent(Vector2Int pos1, Vector2Int pos2)

@@ -7,11 +7,11 @@ public class Player : MonoBehaviour
 {
     [HideInInspector] public Text healthText;
 
-    public enum PlayerAttackMode
+    public enum AttackPattern
     {
-        SwingLeft,
-        SwingRight,
-        ThrustForward
+        Left,
+        Right,
+        Forward
     }
 
     public int maxHealth = 100;
@@ -19,7 +19,7 @@ public class Player : MonoBehaviour
     public int attackDamage = 25;
 
     [Header("Attack Pattern State")]
-    public PlayerAttackMode currentAttackMode = PlayerAttackMode.SwingLeft;
+    public AttackPattern currentAttackPattern = AttackPattern.Left;
 
     [Header("Damage Flash Settings")]
     public Color healthTextDamageFlashColor = Color.red;
@@ -107,29 +107,29 @@ public class Player : MonoBehaviour
         transform.position = targetWorldPos;
     }
 
-    public List<Vector2Int> GetCurrentAttackPatternRelative(Vector2Int playerFacingDirection)
+    public List<Vector2Int> GetCurrentAttackPatternRelative(Vector2Int facing)
     {
         List<Vector2Int> pattern = new List<Vector2Int>();
 
-        Vector2Int F = playerFacingDirection;
-        Vector2Int L = new Vector2Int(-playerFacingDirection.y, playerFacingDirection.x);
-        Vector2Int R = new Vector2Int(playerFacingDirection.y, -playerFacingDirection.x);
-        Vector2Int B = -playerFacingDirection;
+        Vector2Int F = facing;
+        Vector2Int L = new Vector2Int(-facing.y, facing.x);
+        Vector2Int R = new Vector2Int(facing.y, -facing.x);
+        Vector2Int B = -facing;
 
 
-        switch (currentAttackMode)
+        switch (currentAttackPattern)
         {
-            case PlayerAttackMode.SwingLeft:
+            case AttackPattern.Left:
                 pattern.Add(F);
                 pattern.Add(L);
                 pattern.Add(L + F);
                 break;
-            case PlayerAttackMode.SwingRight:
+            case AttackPattern.Right:
                 pattern.Add(F);
                 pattern.Add(R);
                 pattern.Add(R + F);
                 break;
-            case PlayerAttackMode.ThrustForward:
+            case AttackPattern.Forward:
                 pattern.Add(F);
                 pattern.Add(F + F);
                 break;
@@ -137,29 +137,29 @@ public class Player : MonoBehaviour
         return pattern;
     }
 
-    public void CycleAttackMode()
+    public void CycleAttackPattern()
     {
-        switch (currentAttackMode)
+        switch (currentAttackPattern)
         {
-            case PlayerAttackMode.SwingLeft:
-                currentAttackMode = PlayerAttackMode.SwingRight;
+            case AttackPattern.Left:
+                currentAttackPattern = AttackPattern.Right;
                 break;
-            case PlayerAttackMode.SwingRight:
-                currentAttackMode = PlayerAttackMode.ThrustForward;
+            case AttackPattern.Right:
+                currentAttackPattern = AttackPattern.Forward;
                 break;
-            case PlayerAttackMode.ThrustForward:
-                currentAttackMode = PlayerAttackMode.SwingLeft;
+            case AttackPattern.Forward:
+                currentAttackPattern = AttackPattern.Left;
                 break;
         }
     }
     
-    public PlayerAttackMode PeekNextAttackMode()
+    public AttackPattern PeekNextAttackMode()
     {
-        switch (currentAttackMode)
+        switch (currentAttackPattern)
         {
-            case PlayerAttackMode.SwingLeft: return PlayerAttackMode.SwingRight;
-            case PlayerAttackMode.SwingRight: return PlayerAttackMode.ThrustForward;
-            case PlayerAttackMode.ThrustForward: default: return PlayerAttackMode.SwingLeft;
+            case AttackPattern.Left: return AttackPattern.Right;
+            case AttackPattern.Right: return AttackPattern.Forward;
+            case AttackPattern.Forward: default: return AttackPattern.Left;
         }
     }
 }

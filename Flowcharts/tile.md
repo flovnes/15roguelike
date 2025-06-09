@@ -1,7 +1,6 @@
 @startuml
-skinparam linetype ortho
 skinparam class {
-    BackgroundColor White
+    BackgroundColor transparent
     BorderColor Black
     FontColor Black
     ArrowColor Black
