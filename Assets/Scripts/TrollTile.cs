@@ -14,7 +14,7 @@ public class TrollTile : EnemyTile
         actionTurnCounter = Random.Range(1,4);
     }
 
-    public override List<Vector2Int> GetRelativeAttackPattern()
+    public override List<Vector2Int> GetAttackPattern()
     {
         return new List<Vector2Int>
         {
@@ -26,7 +26,7 @@ public class TrollTile : EnemyTile
 
     public override void PerformAction(Player player, Vector2Int playerActualGridPos, Tile[,] gameGrid)
     {
-        if (GameManager.Instance.IsAnimating()) return;
+        if (GameManager.gameMagener.IsAnimating()) return;
         actionTurnCounter++;
 
         CheckProximityAndTurn(playerActualGridPos, proximityDetectionRange);
@@ -36,7 +36,7 @@ public class TrollTile : EnemyTile
             List<Vector2Int> attackTiles = GetCurrentAttackPatternWorldPositions();
             foreach (var tilePos in attackTiles)
             {
-                if (GameManager.Instance.InBounds(tilePos))
+                if (GameManager.gameMagener.InBounds(tilePos))
                 {
                     if (tilePos == playerActualGridPos)
                     {
@@ -49,6 +49,6 @@ public class TrollTile : EnemyTile
 
     protected override void HandleLootDrop()
     {
-        GameManager.Instance?.ReplaceTileInGridDataAndVisuals(this.gridPosition, TileType.Key, GameManager.Instance.keyTilePrefab);
+        GameManager.gameMagener?.ReplaceTileInGridDataAndVisuals(this.gridPosition, TileType.Key, GameManager.gameMagener.keyTilePrefab);
     }
 }

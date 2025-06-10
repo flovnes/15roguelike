@@ -18,20 +18,20 @@ public class GoalTile : Tile
 
     public void UpdateVisualState()
     {
-        if (GameManager.Instance == null || sr == null) return;
+        if (GameManager.gameMagener == null || sr == null) return;
 
-        bool currentlyHasKey = GameManager.Instance.HasKey();
+        bool currentlyHasKey = GameManager.gameMagener.HasKey();
         sr.sprite = currentlyHasKey ? activeSprite : inactiveSprite;
         originalColor = sr.color;
     }
 
     public override void OnPlayerSwap(Player player)
     {
-        if (GameManager.Instance == null || player == null) return;
+        if (GameManager.gameMagener == null || player == null) return;
 
-        if (GameManager.Instance.HasKey())
+        if (GameManager.gameMagener.HasKey())
         {
-            GameManager.Instance.LevelCleared();
+            GameManager.gameMagener.LevelCleared();
         }
     }
 }

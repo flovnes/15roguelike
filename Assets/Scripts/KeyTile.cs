@@ -18,10 +18,10 @@ public class KeyTile : Tile
 
     public override void OnPlayerSwap(Player player)
     {
-        if (GameManager.Instance == null || GameManager.Instance.HasKey()) return;
+        if (GameManager.gameMagener == null || GameManager.gameMagener.HasKey()) return;
 
-        GameManager.Instance.CollectKey();
+        GameManager.gameMagener.CollectKey();
 
-        GameManager.Instance.ReplaceTileInGridDataAndVisuals(this.gridPosition, TileType.Empty, GameManager.Instance.emptyTilePrefab);
+        GameManager.gameMagener.ReplaceTileInGridDataAndVisuals(this.gridPosition, TileType.Empty, GameManager.gameMagener.emptyTilePrefab);
     }
 }

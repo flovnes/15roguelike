@@ -13,14 +13,14 @@ public class LizardmanTile : EnemyTile
         this.gameObject.name = $"Lizardman_{pos.x}_{pos.y}";
     }
 
-    public override List<Vector2Int> GetRelativeAttackPattern()
+    public override List<Vector2Int> GetAttackPattern()
     {
         return new List<Vector2Int> { facingDirection };
     }
 
     public override void PerformAction(Player player, Vector2Int playerActualGridPos, Tile[,] gameGrid)
     {
-        if (GameManager.Instance.IsAnimating()) return;
+        if (GameManager.gameMagener.IsAnimating()) return;
         actionTurnCounter++;    
 
         bool playerInProximity = CheckProximityAndTurn(playerActualGridPos, proximityDetectionRange);

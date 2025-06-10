@@ -8,10 +8,11 @@ using DG.Tweening;
 public class GameManager : MonoBehaviour
 {
     #region Unity Methods
-    public static GameManager Instance { get; private set; }
+    public static GameManager gameMagener { get; private set; }
+
     void Awake()
     {
-        if (Instance == null) Instance = this;
+        if (gameMagener == null) gameMagener = this;
         else Destroy(gameObject);
     }
 
@@ -336,12 +337,12 @@ public class GameManager : MonoBehaviour
                     }
                     else
                     {
-                        StartCoroutine(AnimateSnapBackCoroutine(visualTileBeingDragged, GridToWorldPosition(dragTileOriginalGridPos), draggedTileOriginalSortingOrder));
+                        StartCoroutine(SnapBackAnimation(visualTileBeingDragged, GridToWorldPosition(dragTileOriginalGridPos), draggedTileOriginalSortingOrder));
                     }
                 }
                 else
                 {
-                    StartCoroutine(AnimateSnapBackCoroutine(visualTileBeingDragged, GridToWorldPosition(dragTileOriginalGridPos), draggedTileOriginalSortingOrder));
+                    StartCoroutine(SnapBackAnimation(visualTileBeingDragged, GridToWorldPosition(dragTileOriginalGridPos), draggedTileOriginalSortingOrder));
                 }
 
                 tileBeingDragged = null;
@@ -742,7 +743,7 @@ public class GameManager : MonoBehaviour
         Vector3 finalPosPlayerVisual = finalPosPlayerTile;
         if (playerGameObject) finalPosPlayerVisual.z = playerGameObject.transform.position.z;
 
-        StartCoroutine(AnimateSwapCoroutine(
+        StartCoroutine(SwapWithPlayerAnimation(
             playerTileGO, finalPosPlayerTile,
             targetTileGO, finalPosTargetTile,
             playerGameObject, finalPosPlayerVisual,
@@ -780,7 +781,7 @@ public class GameManager : MonoBehaviour
                 et.SetFacingDirection(worldDirectionEnemyMoves);
             }
 
-            StartCoroutine(AnimateSimpleTilePairSwap(
+            StartCoroutine(SwapTilesAnimation(
                 enemyGO, GridToWorldPosition(enemyTargetPos_Grid),
                 goOfTileAtTarget, GridToWorldPosition(enemyCurrentPos_Grid)
             ));
@@ -1049,7 +1050,7 @@ public class GameManager : MonoBehaviour
 
     #region Animations
 
-    private IEnumerator AnimateSwapCoroutine(
+    private IEnumerator SwapWithPlayerAnimation(
         GameObject tile1GO, Vector3 tile1FinalPos,
         GameObject tile2GO, Vector3 tile2FinalPos,
         GameObject playerVisualGO, Vector3 playerVisualTargetPos,
@@ -1099,8 +1100,8 @@ public class GameManager : MonoBehaviour
         {
             elapsedTime += Time.deltaTime;
             float t = Mathf.Clamp01(elapsedTime / swapAnimationDuration);
-
-            t = t * t * (3f - t * 2f);
+            
+            t = t * t * (3f - t * 2f); // 3t^2 - 2t^3 | ease-in-out
 
             tile1GO.transform.position = Vector3.Lerp(tile1StartPos, tile1FinalPos, t);
             tile2GO.transform.position = Vector3.Lerp(tile2StartPos, tile2FinalPos, t);
@@ -1171,7 +1172,7 @@ public class GameManager : MonoBehaviour
         yield return null;
     }
 
-    private IEnumerator AnimateSimpleTilePairSwap(
+    private IEnumerator SwapTilesAnimation(
         GameObject tile1GO, Vector3 tile1TargetPos,
         GameObject tile2GO, Vector3 tile2TargetPos)
     {
@@ -1211,7 +1212,7 @@ public class GameManager : MonoBehaviour
         yield return null;
     }
 
-    private IEnumerator AnimateSnapBackCoroutine(GameObject tileGO, Vector3 targetPos, int originalSortingOrderToRestore)
+    private IEnumerator SnapBackAnimation(GameObject tileGO, Vector3 targetPos, int originalSortingOrderToRestore)
     {
         swapAnimationActive = true;
         tileGO.transform.DORotate(Vector3.zero, swapAnimationDuration * 0.5f).SetEase(Ease.OutBack);

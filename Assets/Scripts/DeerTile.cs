@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-public class DeermanTile : EnemyTile
+public class DeerTile : EnemyTile
 {
     public override void Initialize(Vector2Int pos, TileType tileType)
     {
@@ -13,7 +13,7 @@ public class DeermanTile : EnemyTile
         this.gameObject.name = $"Deerman_{pos.x}_{pos.y}";
     }
 
-    public override List<Vector2Int> GetRelativeAttackPattern()
+    public override List<Vector2Int> GetAttackPattern()
     {
         List<Vector2Int> pattern = new List<Vector2Int>();
         for (int i = 1; i <= 4; i++)
@@ -25,7 +25,7 @@ public class DeermanTile : EnemyTile
 
     public override void PerformAction(Player player, Vector2Int playerActualGridPos, Tile[,] gameGrid)
     {
-        if (GameManager.Instance.IsAnimating()) return;
+        if (GameManager.gameMagener.IsAnimating()) return;
         actionTurnCounter++;
 
         bool playerInSight = CheckProximityAndTurn(playerActualGridPos, proximityDetectionRange);
@@ -41,7 +41,7 @@ public class DeermanTile : EnemyTile
                 {
                     currentCheckPos += facingDirection;
                     if (currentCheckPos == playerActualGridPos) break;
-                    if (!GameManager.Instance.InBounds(currentCheckPos)) { clearShot = false; break; }
+                    if (!GameManager.gameMagener.InBounds(currentCheckPos)) { clearShot = false; break; }
 
                     Tile tileInPath = gameGrid[currentCheckPos.x, currentCheckPos.y];
                     if (tileInPath is EnemyTile || (tileInPath is EnvironmentTile env && env.blocksLineOfSight))

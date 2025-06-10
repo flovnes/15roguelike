@@ -67,7 +67,7 @@ public class Player : MonoBehaviour
         {
             currentHealth = 0;
             UpdateHealthTextUI();
-            GameManager.Instance?.GameOver("You are Dead.");
+            GameManager.gameMagener?.GameOver("You are Dead.");
         }
     }
 

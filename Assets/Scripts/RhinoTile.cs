@@ -13,7 +13,7 @@ public class RhinomanTile : EnemyTile
         this.gameObject.name = $"Rhinoman_{pos.x}_{pos.y}";
     }
 
-    public override List<Vector2Int> GetRelativeAttackPattern()
+    public override List<Vector2Int> GetAttackPattern()
     {
         List<Vector2Int> pattern = new List<Vector2Int>();
         Vector2Int front = facingDirection;
@@ -28,7 +28,7 @@ public class RhinomanTile : EnemyTile
 
     public override void PerformAction(Player player, Vector2Int playerActualGridPos, Tile[,] gameGrid)
     {
-        if (GameManager.Instance.IsAnimating()) return;
+        if (GameManager.gameMagener.IsAnimating()) return;
         actionTurnCounter++;
 
         if (playerHasBeenSpotted && actionTurnCounter % 2 == 0)

@@ -56,7 +56,7 @@ public abstract class EnemyTile : Tile
 
     public virtual void TakeDamage(int damageAmount)
     {
-        if (sr != null) StartCoroutine(FlashColorFeedback(GameManager.Instance.enemyHitFlashColor, GameManager.Instance.enemyHitFlashDuration));
+        if (sr != null) StartCoroutine(FlashColorFeedback(GameManager.gameMagener.enemyHitFlashColor, GameManager.gameMagener.enemyHitFlashDuration));
 
         if (isDefeated) return;
         currentHealth -= damageAmount;
@@ -90,7 +90,7 @@ public abstract class EnemyTile : Tile
 
         HandleLootDrop();
 
-        GameManager.Instance?.EnemyDefeated();
+        GameManager.gameMagener?.EnemyDefeated();
     }
 
     protected virtual void HandleLootDrop()
@@ -106,11 +106,11 @@ public abstract class EnemyTile : Tile
     }
 
     public abstract void PerformAction(Player player, Vector2Int playerActualGridPos, Tile[,] gameGrid);
-    public abstract List<Vector2Int> GetRelativeAttackPattern();
+    public abstract List<Vector2Int> GetAttackPattern();
     public List<Vector2Int> GetCurrentAttackPatternWorldPositions()
     {
         List<Vector2Int> worldPositions = new List<Vector2Int>();
-        List<Vector2Int> relativePattern = GetRelativeAttackPattern();
+        List<Vector2Int> relativePattern = GetAttackPattern();
         foreach (Vector2Int relativePos in relativePattern)
         {
             worldPositions.Add(gridPosition + relativePos);
@@ -149,7 +149,7 @@ public abstract class EnemyTile : Tile
 
     protected virtual void AttemptMoveTowards(Vector2Int playerPos, Tile[,] gameGrid)
     {
-        if (GameManager.Instance == null) return;
+        if (GameManager.gameMagener == null) return;
 
         Vector2Int bestMoveDir;
         int minDistance = int.MaxValue;
@@ -159,7 +159,7 @@ public abstract class EnemyTile : Tile
         foreach (Vector2Int dir in cardinalDirections)
         {
             Vector2Int nextPos = gridPosition + dir;
-            if (GameManager.Instance.InBounds(nextPos))
+            if (GameManager.gameMagener.InBounds(nextPos))
             {
                 Tile tileAtNextPos = gameGrid[nextPos.x, nextPos.y];
                 int dist = Mathf.Abs(nextPos.x - playerPos.x) + Mathf.Abs(nextPos.y - playerPos.y);
@@ -179,7 +179,7 @@ public abstract class EnemyTile : Tile
         if (potentialMoveDirs.Count > 0)
         {
             bestMoveDir = potentialMoveDirs[Random.Range(0, potentialMoveDirs.Count)];
-            GameManager.Instance.AttemptEnemyTileSwap(this, gameObject, bestMoveDir);
+            GameManager.gameMagener.AttemptEnemyTileSwap(this, gameObject, bestMoveDir);
         }
     }
 }
